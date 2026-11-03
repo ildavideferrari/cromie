@@ -712,19 +712,38 @@ footer{font-size:12.5px;color:var(--muted)}
   const voices = new Set();
   let timers = [];
   let holdSrc = null, curHold = false, tlogReady = false;
+  // Pianoforte lasciato vibrare: parziali leggermente inarmoniche, due corde appena scordate (battimenti),
+  // decadimento naturale in due tempi, colpo di martelletto e un po' di stanza.
+  let noiseBuf = null;
   function ac(){
     if (!ctx){
       ctx = new (window.AudioContext || window.webkitAudioContext)();
       const comp = ctx.createDynamicsCompressor();
-      comp.threshold.value = -16; comp.ratio.value = 4;
-      master = ctx.createGain(); master.gain.value = .75;
-      master.connect(comp); comp.connect(ctx.destination);
-      const amps = [0, 1, .5, .3, .2, .12, .08, .055, .035, .02];
-      wave = ctx.createPeriodicWave(new Float32Array(amps.length), new Float32Array(amps));
+      comp.threshold.value = -12; comp.ratio.value = 3; comp.attack.value = .004; comp.release.value = .3;
+      master = ctx.createGain(); master.gain.value = .9;
+      const conv = ctx.createConvolver(); conv.buffer = roomIR(2.4);
+      const wet = ctx.createGain(); wet.gain.value = .22;
+      master.connect(comp);
+      master.connect(conv); conv.connect(wet); wet.connect(comp);
+      comp.connect(ctx.destination);
+      noiseBuf = noise(.08);
     }
     iosUnlock();
     if (ctx.state === 'suspended') ctx.resume();
     return ctx;
+  }
+  function roomIR(sec){
+    const sr = ctx.sampleRate, n = Math.floor(sr * sec), b = ctx.createBuffer(2, n, sr);
+    for (let c = 0; c < 2; c++){
+      const d = b.getChannelData(c);
+      for (let i = 0; i < n; i++){ const x = i / sr; d[i] = (Math.random() * 2 - 1) * Math.exp(-x * 3.1) * (x < .015 ? x / .015 : 1) * .5; }
+    }
+    return b;
+  }
+  function noise(sec){
+    const sr = ctx.sampleRate, n = Math.floor(sr * sec), b = ctx.createBuffer(1, n, sr), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    return b;
   }
   // iPhone: fa suonare l'audio anche con l'interruttore laterale su silenzioso
   let unlocked = false, silentEl = null;
@@ -743,25 +762,45 @@ footer{font-size:12.5px;color:var(--muted)}
     } catch(e){}
   }
   function voice(m, t, dur){
-    const f = 440 * Math.pow(2, (m - 69) / 12);
-    const o1 = ctx.createOscillator(), o2 = ctx.createOscillator();
-    o1.setPeriodicWave(wave); o2.setPeriodicWave(wave);
-    o1.frequency.value = f; o2.frequency.value = f; o2.detune.value = 5;
-    const mix = ctx.createGain(); mix.gain.value = .5;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = .6;
-    lp.frequency.setValueAtTime(Math.min(f * 10, 12000), t);
-    lp.frequency.exponentialRampToValueAtTime(Math.max(f * 2.2, 600), t + .9);
-    const g = ctx.createGain();
-    const peak = .3 * (m < 60 ? 1.12 : 1);
-    g.gain.setValueAtTime(.0001, t);
-    g.gain.exponentialRampToValueAtTime(peak, t + .008);
-    const fin = isFinite(dur);
-    g.gain.setTargetAtTime(peak * .35, t + .02, .25 + Math.min(dur, 4) * .2);
-    if (fin) g.gain.setTargetAtTime(.0001, t + dur, .14);
-    o1.connect(mix); o2.connect(mix); mix.connect(lp); lp.connect(g); g.connect(master);
-    o1.start(t); o2.start(t);
-    if (fin){ const end = t + dur + 1; o1.stop(end); o2.stop(end); }
-    const v = { g, o:[o1, o2] }; voices.add(v); o1.onended = () => voices.delete(v);
+    const f0 = 440 * Math.pow(2, (m - 69) / 12);
+    const hold = !isFinite(dur);
+    // tempo di estinzione naturale: ~9 s sul Do centrale, più lungo nei gravi, più breve negli acuti
+    const T60 = Math.max(1.8, Math.min(14, 9 * Math.pow(2, -(m - 60) / 18)));
+    const Bi = .00007 * Math.pow(2, Math.abs(m - 60) / 20); // inarmonicità delle corde
+    const out = ctx.createGain();
+    const tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = Math.min(15000, f0 * 16); tone.Q.value = .5;
+    out.connect(tone); tone.connect(master);
+    const nP = Math.max(5, Math.min(12, Math.floor(8000 / f0)));
+    const amps = [];
+    for (let n = 1; n <= nP; n++) amps.push(Math.abs(Math.sin(Math.PI * n / 7.6)) / Math.pow(n, 1.35)); // punto di percussione ~1/7.6
+    const level = .4 / amps.reduce((a, x) => a + x, 0) * (m < 48 ? 1.15 : 1);
+    const nodes = [];
+    for (let n = 1; n <= nP; n++){
+      const fn = f0 * n * Math.sqrt(1 + Bi * n * n);
+      if (fn > 14000) break;
+      const tn = T60 / (1 + .35 * (n - 1));     // le armoniche alte si spengono prima
+      const slow = tn / 5, fast = Math.max(.06, tn * .03);
+      const strings = n <= 6 ? [-1, 1] : [0];
+      strings.forEach(side => {
+        const o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.value = fn * (1 + side * .00017 * (1 + n * .15));
+        const g = ctx.createGain(), p = amps[n - 1] * level / strings.length;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(p, t + .002 + n * .0003);
+        g.gain.setTargetAtTime(p * .5, t + .004, fast);                  // primo decadimento, rapido
+        g.gain.setTargetAtTime(hold ? p * .12 : 0, t + fast * 3, slow);  // coda lunga (con ∞ resta un filo di suono)
+        o.connect(g); g.connect(out);
+        o.start(t); if (!hold) o.stop(t + T60 + .3);
+        nodes.push(o);
+      });
+    }
+    // martelletto
+    const ns = ctx.createBufferSource(); ns.buffer = noiseBuf;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = Math.min(5000, f0 * 4); bp.Q.value = .7;
+    const ng = ctx.createGain(); ng.gain.setValueAtTime(.05 * (m < 60 ? 1.3 : 1), t); ng.gain.exponentialRampToValueAtTime(.0001, t + .045);
+    ns.connect(bp); bp.connect(ng); ng.connect(out); ns.start(t); ns.stop(t + .08);
+    const v = { g: out, o: nodes }; voices.add(v);
+    nodes[0].onended = () => voices.delete(v);
   }
   function at(sec, fn){ timers.push(setTimeout(fn, Math.max(0, sec * 1000))); }
   function hush(keepFlood){
