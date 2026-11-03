@@ -612,7 +612,7 @@ footer{font-size:12.5px;color:var(--muted)}
   const famOf = s => FAM.find(f => f.ivs.includes(s));
   const ivOf = d => IV[d === 0 ? 0 : (d % 12 === 0 ? 12 : d % 12)];
   const DIR_LABEL = { asc:'Ascendente', desc:'Discendente' };
-  const PLAY_LABEL = { mel:'di seguito', harm:'insieme', both:'di seguito e insieme' };
+  const PLAY_LABEL = { mel:'di seguito', harm:'insieme', both:'tonica, nota, bicordo' };
   const $ = id => document.getElementById(id);
   const rand = a => a[Math.floor(Math.random() * a.length)];
   const semis = s => s + (s === 1 ? ' semitono' : ' semitoni');
@@ -645,7 +645,9 @@ footer{font-size:12.5px;color:var(--muted)}
   const spName = n => LET_IT[n.l] + ACC_TXT[n.a] + (Math.floor(n.dn / 7) - 1);
   const SP = 8, BOT = 76;
   const glyph = (name, x, y, k, an) => `<path d="${GL[name]}" transform="translate(${x.toFixed(2)},${(y + an * k).toFixed(2)}) scale(${k.toFixed(5)},${(-k).toFixed(5)})"/>`;
-  function staffSVG(a, b, play, iv){
+  // Colonne del pentagramma: di seguito = due note; insieme = bicordo; entrambi = tonica, nota, bicordo.
+  // stage limita quante colonne si vedono (per farle comparire insieme al suono).
+  function staffSVG(a, b, play, iv, stage = 9){
     const ms = [a, b].filter(v => v != null);
     const treble = !ms.length || ms.reduce((x, y) => x + y, 0) / ms.length >= 59;
     const base = treble ? 30 : 18;
@@ -654,33 +656,44 @@ footer{font-size:12.5px;color:var(--muted)}
     for (let i = 0; i < 5; i++) out += `<line x1="0" x2="150" y1="${BOT - i * SP}" y2="${BOT - i * SP}" class="sl"/>`;
     out += treble ? glyph('treble', 3, BOT - SP, SP / 250, 336) : glyph('bass', 3, BOT - 3 * SP, SP / 220, 644);
     if (a != null){
-      const A = spellDef(a), notes = [{ n:A, fill:'var(--ink)' }];
-      if (b != null) notes.push({ n: spellRel(A, b), fill: iv ? iv.color : 'var(--ink)' });
-      const harm = play === 'harm' && notes.length === 2;
-      if (!harm){ notes[0].x = notes.length === 1 ? 94 : 74; if (notes[1]) notes[1].x = 118; }
-      else {
-        const [lo, hi] = notes[0].n.dn <= notes[1].n.dn ? [notes[0], notes[1]] : [notes[1], notes[0]];
-        lo.x = 96; hi.x = hi.n.dn - lo.n.dn <= 1 ? 106.5 : 96;
-      }
-      notes.forEach(nt => {
-        const dn = nt.n.dn;
-        for (let d = base - 2; d >= dn; d -= 2) out += `<line x1="${nt.x - 9}" x2="${nt.x + 9}" y1="${Y(d)}" y2="${Y(d)}" class="ll"/>`;
-        for (let d = base + 10; d <= dn; d += 2) out += `<line x1="${nt.x - 9}" x2="${nt.x + 9}" y1="${Y(d)}" y2="${Y(d)}" class="ll"/>`;
-      });
+      const A = { n: spellDef(a), fill:'var(--ink)' };
+      const B = b != null ? { n: spellRel(A.n, b), fill: iv ? iv.color : 'var(--ink)' } : null;
+      let cols;
+      if (!B) cols = [[94, [A]]];
+      else if (play === 'harm') cols = [[96, [A, B]]];
+      else if (play === 'both') cols = [[56, [A]], [86, [B]], [128, [A, B]]];
+      else cols = [[74, [A]], [118, [B]]];
       const ka = SP / 270;
-      let accX = Math.min(...notes.map(n => n.x)) - 8;
-      const ord = harm ? notes.slice().sort((p, q) => q.n.dn - p.n.dn) : notes;
-      ord.forEach(nt => {
-        if (!nt.n.a) return;
-        const gname = ACC_G[nt.n.a], w = ACC_W[gname] * ka, right = harm ? accX : nt.x - 8;
-        out += glyph(gname, right - w, Y(nt.n.dn), ka, ACC_AN[gname]);
-        if (harm) accX = right - w - 2;
+      cols.slice(0, stage).forEach(([x, ns]) => {
+        const items = ns.map(nt => ({ ...nt, x }));
+        if (items.length === 2){
+          const [lo, hi] = items[0].n.dn <= items[1].n.dn ? [items[0], items[1]] : [items[1], items[0]];
+          if (hi.n.dn - lo.n.dn <= 1) hi.x = x + 10.5;
+        }
+        items.forEach(nt => {
+          const dn = nt.n.dn;
+          for (let d = base - 2; d >= dn; d -= 2) out += `<line x1="${nt.x - 9}" x2="${nt.x + 9}" y1="${Y(d)}" y2="${Y(d)}" class="ll"/>`;
+          for (let d = base + 10; d <= dn; d += 2) out += `<line x1="${nt.x - 9}" x2="${nt.x + 9}" y1="${Y(d)}" y2="${Y(d)}" class="ll"/>`;
+        });
+        const dyad = items.length === 2;
+        let accX = Math.min(...items.map(n => n.x)) - 8;
+        (dyad ? items.slice().sort((p, q) => q.n.dn - p.n.dn) : items).forEach(nt => {
+          if (!nt.n.a) return;
+          const gname = ACC_G[nt.n.a], w = ACC_W[gname] * ka, right = dyad ? accX : nt.x - 8;
+          out += glyph(gname, right - w, Y(nt.n.dn), ka, ACC_AN[gname]);
+          if (dyad) accX = right - w - 2;
+        });
+        items.forEach(nt => { const y = Y(nt.n.dn); out += `<ellipse cx="${nt.x}" cy="${y}" rx="5.4" ry="4" transform="rotate(-20 ${nt.x} ${y})" fill="${nt.fill}" class="nh"/>`; });
       });
-      notes.forEach(nt => { const y = Y(nt.n.dn); out += `<ellipse cx="${nt.x}" cy="${y}" rx="5.4" ry="4" transform="rotate(-20 ${nt.x} ${y})" fill="${nt.fill}" class="nh"/>`; });
     }
     return `<svg viewBox="0 14 150 104" role="img" aria-label="Pentagramma">${out}</svg>`;
   }
-  function stf(a = null, b = null, play = 'mel', iv = null){ $('roStaff').innerHTML = staffSVG(a, b, play, iv); scopeSet(a, b, iv, play); }
+  let staffCur = { a:null, b:null, play:'mel', iv:null };
+  function drawStaffStage(stage){
+    const h = staffSVG(staffCur.a, staffCur.b, staffCur.play, staffCur.iv, stage);
+    $('roStaff').innerHTML = h; $('flStaff').innerHTML = h;
+  }
+  function stf(a = null, b = null, play = 'mel', iv = null){ staffCur = { a, b, play, iv }; $('roStaff').innerHTML = staffSVG(a, b, play, iv); scopeSet(a, b, iv, play); }
 
   /* ---------- Memoria locale ---------- */
   const store = {
@@ -831,7 +844,7 @@ footer{font-size:12.5px;color:var(--muted)}
   const RATIO = ['1:1','16:15','9:8','6:5','5:4','4:3','45:32','3:2','8:5','5:3','16:9','15:8','2:1'];
   const RM = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; } })();
   const hz = m => 440 * Math.pow(2, (m - 69) / 12);
-  const scope = { a:null, b:null, tx:'#15161A', t0:0, until:0, raf:0 };
+  const scope = { a:null, b:null, tx:'#15161A', t0:0, until:0, raf:0, wins:[] };
   function fitCanvas(cv){
     const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
     const w = Math.round(r.width * d), h = Math.round(r.height * d);
@@ -840,7 +853,7 @@ footer{font-size:12.5px;color:var(--muted)}
   }
   const hexRgb = h => { const n = parseInt(h.slice(1), 16); return (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255); };
   const PHOSPHOR = '#6BFF95';
-  function scopeDraw(cv, now, persist, onFlood){
+  function scopeDraw(cv, now, persist, onFlood, trace){
     if (!cv || !fitCanvas(cv)) return;
     const g = cv.getContext('2d'), W = cv.width, H = cv.height;
     const ink = onFlood ? scope.tx : PHOSPHOR, rgb = hexRgb(ink);
@@ -858,7 +871,7 @@ footer{font-size:12.5px;color:var(--muted)}
     }
     g.lineWidth = 1; g.strokeStyle = 'rgba(' + rgb + ',' + (onFlood ? .18 : .22) + ')'; g.beginPath();
     g.moveTo(W / 2, 0); g.lineTo(W / 2, H); g.moveTo(0, H / 2); g.lineTo(W, H / 2); g.stroke();
-    if (scope.a == null) return;
+    if (scope.a == null || !trace) return;
     const f1 = hz(scope.a), f2 = scope.b != null ? hz(scope.b) : 0, t = (now - scope.t0) / 1000;
     const Rx = Math.min(W, H) * (onFlood ? .42 : .38), Ry = Rx, cx = W / 2, cy = H / 2;
     // una sola ripetizione della figura: tanti cicli di X quanti ne indica il rapporto
@@ -877,18 +890,32 @@ footer{font-size:12.5px;color:var(--muted)}
     g.stroke();
   }
   function scopeTargets(){ const out = [[$('scopeCv'), false]]; if (fl.classList.contains('on')) out.push([$('flScope'), true]); return out; }
+  // La figura compare solo mentre le due note suonano davvero insieme
   function scopeFrame(now){
+    const tt = (now - scope.t0) / 1000;
     const live = !RM && now < scope.until;
-    scopeTargets().forEach(([cv, f]) => scopeDraw(cv, now, live, f));
+    const on = scope.wins.some(w => tt >= w[0] && tt < w[1]);
+    scopeTargets().forEach(([cv, f]) => scopeDraw(cv, now, live, f, on));
     scope.raf = live ? requestAnimationFrame(scopeFrame) : 0;
-    if (!live) scopeTargets().forEach(([cv, f]) => scopeDraw(cv, scope.t0 + 1000 * (scope.a != null ? .37 : 0), false, f));
+    if (!live) scopeTargets().forEach(([cv, f]) => scopeDraw(cv, now, false, f, RM && scope.wins.length > 0));
   }
-  function scopeSet(a, b, iv, play){
+  // finestre di tempo (s) in cui tonica e nota d'arrivo suonano insieme
+  function overlapWins(a, b, play, hold){
+    if (a == null || b == null) return [];
+    const ns = intervalNotes(a, b, play);
+    if (hold){ const last = Math.max(...ns.map(n => n.dt)); ns.forEach(n => { if (n.dt === last) n.dur = Infinity; }); }
+    const A = ns.filter((n, i) => i % 2 === 0), B = ns.filter((n, i) => i % 2 === 1), out = [];
+    A.forEach(x => B.forEach(y => { const s0 = Math.max(x.dt, y.dt), s1 = Math.min(x.dt + x.dur, y.dt + y.dur); if (s1 > s0) out.push([s0 + .04, s1 + .04]); }));
+    return out;
+  }
+  function scopeSet(a, b, iv, play, delay = 0){
     scope.a = a; scope.b = (b != null && a != null) ? b : null;
     scope.tx = iv ? iv.tx : '#15161A';
     const now = performance.now();
-    scope.t0 = now;
-    scope.until = curHold ? Infinity : now + 1000 * (scope.b != null ? lengthOf(play || 'mel') + .6 : (a != null ? T() + .3 : 0));
+    scope.t0 = now + delay * 1000;
+    scope.wins = overlapWins(a, scope.b, play || 'mel', curHold);
+    const end = scope.wins.reduce((m, w) => Math.max(m, w[1]), 0);
+    scope.until = end === Infinity ? Infinity : scope.t0 + 1000 * (scope.wins.length ? end + .5 : 0);
     const d = scope.b != null ? Math.abs(scope.b - a) : null;
     $('scCode').textContent = d != null ? ivOf(d).code : '';
     $('scRatio').textContent = d != null ? (d <= 12 ? RATIO[d] : 'composto') : (a != null ? 'tonica' : '');
@@ -963,8 +990,9 @@ footer{font-size:12.5px;color:var(--muted)}
   function setReplay(fn){ lastPlay = fn; $('roReplay').disabled = !fn; }
   function setCur(c){ cur = c; $('roMel').disabled = $('roHarm').disabled = !c; }
   $('roReplay').addEventListener('click', e => { originFrom(e.currentTarget, e); lastPlay && lastPlay(); });
-  $('roMel').addEventListener('click', e => { originFrom(e.currentTarget, e); playCur('mel'); });
-  $('roHarm').addEventListener('click', e => { originFrom(e.currentTarget, e); playCur('harm'); });
+  // i pulsanti della fascia rispettano la scelta esplicita e non aprono la schermata colorata
+  $('roMel').addEventListener('click', e => { originFrom(e.currentTarget, e); playCur('mel', null, true); });
+  $('roHarm').addEventListener('click', e => { originFrom(e.currentTarget, e); playCur('harm', null, true); });
   function ro({ eye, name, meta, iv, iv2, mark }){
     const sw = $('roSw');
     sw.classList.toggle('split', !!iv2);
@@ -1046,6 +1074,9 @@ footer{font-size:12.5px;color:var(--muted)}
   function sound(a, b, iv, dir, play, label, hold = false, noFlood = false){
     clearMarks(); paintTints(a); markRoot(a); if (a !== b){ markLit(b, iv); markSpan(a, b, iv); }
     curHold = hold; stf(a, b, play, iv); curHold = false;
+    // le note compaiono sul pentagramma insieme al suono
+    const onsets = [...new Set(intervalNotes(a, b, play).map(n => n.dt))].sort((x, y) => x - y);
+    if (onsets.length > 1){ drawStaffStage(1); onsets.slice(1).forEach((dt, i) => at(dt + .04, () => drawStaffStage(i + 2))); }
     document.querySelectorAll('.card').forEach(c => c.classList.toggle('on', +c.dataset.s === iv.s && label == null));
     const meta = pairText(a, b, play) + ' · ' + semis(Math.abs(b - a));
     ro({ eye: DIR_LABEL[dir] + ' · ' + PLAY_LABEL[play], name: label || iv.name, meta, iv });
@@ -1065,7 +1096,7 @@ footer{font-size:12.5px;color:var(--muted)}
     const d = Math.abs(cur.b - cur.a), hold = INF();
     if (hold) holdSrc = src || 'cur';
     sound(cur.a, cur.b, cur.iv, cur.dir, play, d > 12 ? ivLabel(d) : null, hold, noFlood);
-    setReplay(() => playCur(play));
+    setReplay(() => playCur(play, src, noFlood));
   }
   $('cards').addEventListener('click', e => {
     const c = e.target.closest('.card'); if (!c) return;
@@ -1075,15 +1106,20 @@ footer{font-size:12.5px;color:var(--muted)}
     playHeld(s);
   });
   // Un intervallo dalle schede: con la barra del tempo tutta a destra resta acceso finché non si tocca di nuovo
+  // Con la schermata colorata l'ascolto diventa sempre tonica, nota, bicordo
+  function effPlay(){
+    if (settings.flood && lPlay !== 'both'){ lPlay = 'both'; document.querySelectorAll('#lPlay button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === 'both')); }
+    return lPlay;
+  }
   function playHeld(s){
-    const hold = INF(), p = lPlay;
+    const hold = INF(), p = effPlay();
     if (hold) holdSrc = 'c' + s;
     showInterval(s, p, hold);
     setReplay(() => { hush(); if (INF()) holdSrc = 'c' + s; showInterval(s, p, INF()); });
   }
   fl.addEventListener('click', () => { if (fl.classList.contains('hold')) hush(); });
   function playPair(a, b){
-    hush(); setCur(null);
+    hush(); setCur(null); effPlay();
     const A = IV[a], B = IV[b], span = spanFor(lPlay) + .2;
     at(0, () => { const [x, y] = targets(a); sound(x, y, A, lDir, lPlay); ro({ eye:'Confronto · prima ' + PLAY_LABEL[lPlay], name: A.name + ' poi ' + B.name, meta: pairText(x, y, lPlay), iv:A, iv2:B, mark:'' }); });
     at(span, () => { const [x, y] = targets(b); sound(x, y, B, lDir, lPlay); ro({ eye:'Confronto · poi ' + PLAY_LABEL[lPlay], name: A.name + ' poi ' + B.name, meta: pairText(x, y, lPlay), iv:B, iv2:A, mark:'' }); });
@@ -1102,6 +1138,7 @@ footer{font-size:12.5px;color:var(--muted)}
     if (same) return;
     originFrom(btn, e);
     seqOn = true; seqBtnEl = btn; seqLabel = btn.textContent; btn.textContent = 'Ferma';
+    effPlay();
     const step = spanFor(lPlay) - .2;
     list.forEach((s, i) => at(i * step, () => showInterval(s)));
     at(list.length * step, () => stopSeq());
@@ -1221,6 +1258,7 @@ footer{font-size:12.5px;color:var(--muted)}
   }
   function playQ(play){
     if (!q) return; hush();
+    if (q.done) scopeSet(q.root, q.target, IV[q.s], play || q.play);
     playNotes(intervalNotes(q.root, q.target, play || q.play, q.done));
   }
   function answer(g, key){
@@ -1243,6 +1281,7 @@ footer{font-size:12.5px;color:var(--muted)}
     else status('Era ' + art(IV[q.s]) + '.' + (g ? ' Hai risposto ' + IV[g].name + '.' : key != null ? ' La nota suonata è fuori direzione o oltre l\'ottava.' : ''), 'bad');
     paintQ(); renderStats();
     const delay = key != null ? .55 : 0;
+    scopeSet(q.root, q.target, IV[q.s], q.play, delay);
     at(delay, () => playNotes(intervalNotes(q.root, q.target, q.play)));
     if (ok && settings.auto) autoT = setTimeout(() => { if (view === 'esercizio') newQ(); }, (holdFor(q.play) + 1.5) * 1000);
   }
