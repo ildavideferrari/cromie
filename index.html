@@ -1,0 +1,1270 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Cromie">
+<meta name="description" content="Allenamento dell'orecchio relativo con gli intervalli a colori.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<style>
+html{-webkit-text-size-adjust:100%;padding-top:env(safe-area-inset-top,0px)}
+body{margin:0}
+img{max-width:100%}
+.key,.card,.ans,.fchip,.pair,.btn{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+</style>
+<title>Cromie degli intervalli</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..800;1,6..96,400..800&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: colonna unica ~1060px. La tastiera è lo strumento condiviso fra Ascolto ed Esercizio; sopra di lei un "display" che nomina ciò che suona; sotto, il pannello della modalità. I colori forti appartengono agli intervalli: la pagina resta neutra finché un intervallo non suona e la invade. */
+:root{
+  --bg:#FFFFFF; --surface:#FAFAFB; --ink:#16171B; --muted:#5A5D67; --line:#DDDFE4; --soft:#EEEFF2;
+  --key-w:#FCFCFA; --key-w-edge:#C4C7CE; --key-b:#1B1C21; --key-b-top:#3A3C44; --key-lbl:#80838C;
+  --ok:#2C7A4B; --bad:#B42B22;
+  --f-display:"Bodoni Moda","Bodoni 72","Didot",Georgia,serif;
+  --f-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light; /* scelta: fondo bianco in ogni tema, per leggere i colori su un neutro puro */
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:28px;padding-bottom:calc(var(--dock-h,260px) + 28px)}
+.wrap{max-width:1060px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* Testata */
+header{display:flex;flex-direction:column;gap:10px}
+.spectrum{display:grid;grid-template-columns:repeat(13,1fr);height:8px;border-radius:2px;overflow:hidden;max-width:420px;outline:1px solid var(--line)}
+.spectrum span{background:var(--c);box-shadow:inset 0 0 0 .5px rgba(0,0,0,.12)}
+h1{font-family:var(--f-display);font-weight:500;font-size:clamp(30px,5vw,46px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1 em{font-style:italic;font-weight:400}
+.sub{margin:0;color:var(--muted);max-width:62ch}
+
+/* Schede */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tab{background:none;border:0;padding:10px 14px 12px;cursor:pointer;color:var(--muted);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;font-size:15px}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.tab:hover{color:var(--ink)}
+
+/* Display */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--bg);border-top:1px solid var(--line);box-shadow:0 -10px 28px rgba(20,22,30,.07);
+  padding-top:8px;padding-bottom:max(10px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.dock-in{max-width:1060px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+.readout{display:grid;grid-template-columns:46px 1fr auto;gap:12px;align-items:center;min-height:46px}
+.ro-sw{width:46px;height:46px;border-radius:6px;background:var(--c,var(--soft));border:1px solid var(--line);display:grid;place-items:center;font-family:var(--f-display);font-size:20px;color:var(--tx,var(--muted));transition:background .25s}
+.ro-sw.split{background:linear-gradient(135deg,var(--c) 0 50%,var(--c2) 50% 100%)}
+.ro-body{min-width:0}
+.ro-eye{font-family:var(--f-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.ro-name{font-family:var(--f-display);font-style:italic;font-size:clamp(19px,2.6vw,24px);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ro-meta{font-family:var(--f-mono);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-variant-numeric:tabular-nums}
+.ro-act{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.ro-act .btn{padding:6px 11px;font-size:14px}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 13px;cursor:pointer;font-weight:500;line-height:1.2}
+.btn:hover{border-color:var(--muted)}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.primary:hover{opacity:.88}
+.btn:disabled{opacity:.4;cursor:default}
+.btn .ico{display:inline-block;font-family:var(--f-mono);font-size:12px;margin-right:6px;opacity:.75;letter-spacing:-.05em}
+
+/* Tastiera */
+.stage{display:flex;flex-direction:column;gap:10px}
+.kbd-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;padding-bottom:4px}
+.kbd{position:relative;min-width:620px;height:clamp(110px,15vw,170px);user-select:none;-webkit-user-select:none;touch-action:manipulation;background:var(--key-b);border-radius:8px;padding:0;border-top:6px solid var(--key-b)}
+.key{position:absolute;top:0;border:0;padding:0;margin:0;cursor:pointer;display:block;-webkit-tap-highlight-color:transparent}
+.key.w{height:100%;background:var(--key-w);border-right:1px solid var(--key-w-edge);border-radius:0 0 5px 5px;z-index:1}
+.key.b{height:61%;background:linear-gradient(var(--key-b-top),var(--key-b) 30%);border-radius:0 0 4px 4px;z-index:2;box-shadow:0 2px 0 rgba(0,0,0,.35)}
+.key .fill{position:absolute;inset:0;border-radius:inherit;background:var(--c);opacity:0;transition:opacity .2s;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.key.lit .fill{opacity:1}
+.key.wrong .fill{opacity:1;background:repeating-linear-gradient(45deg,var(--c) 0 5px,transparent 5px 10px)}
+.key.down{filter:brightness(.88)}
+.key.w.down{transform:translateY(1px)}
+.key .tint{position:absolute;left:4px;right:4px;bottom:6px;height:7px;border-radius:3px;background:var(--tc);display:none;opacity:var(--to,1);box-shadow:inset 0 0 0 1px rgba(0,0,0,.14)}
+.key.b .tint{bottom:5px;left:3px;right:3px}
+.kbd.tints .key .tint{display:block}
+.key.lit .tint{display:none!important}
+.key .mark{position:absolute;left:50%;bottom:22px;width:11px;height:11px;margin-left:-5.5px;border-radius:50%;border:2px solid #16171B;display:none}
+.key.b .mark{border-color:#fff;bottom:18px}
+.key.root .mark{display:block}
+.key .lbl{position:absolute;left:0;right:0;bottom:24px;text-align:center;font-family:var(--f-mono);font-size:10px;color:var(--key-lbl);pointer-events:none}
+.key.root .lbl{bottom:38px}
+.key.lit .lbl{color:var(--tx)}
+.key .hk{position:absolute;left:0;right:0;top:8px;text-align:center;font-family:var(--f-mono);font-size:10px;color:var(--key-lbl);display:none;pointer-events:none;text-transform:uppercase}
+.key.b .hk{color:#8F929B}
+@media (hover:hover) and (pointer:fine){ .kbd.hk-on .key .hk{display:block} }
+.kbd-foot{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between;font-size:12.5px;color:var(--muted)}
+.kbd-foot .oct{display:none;gap:6px;align-items:center}
+@media (hover:hover) and (pointer:fine){ .kbd-foot .oct{display:inline-flex} }
+.tempo{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.tempo .lbl-sm{margin-right:4px}
+.tempo .t-end{font-size:12.5px;color:var(--muted)}
+.tempo input[type=range]{flex:1 1 180px;min-width:0;max-width:420px;accent-color:var(--ink);height:24px}
+.tempo output{font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums;min-width:12ch}
+kbd{font-family:var(--f-mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--surface)}
+
+/* Pannelli */
+.panel{display:flex;flex-direction:column;gap:22px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.toolbar label{display:inline-flex;gap:8px;align-items:center;font-weight:500}
+.tool-group{display:inline-flex;flex-wrap:wrap;gap:6px 8px;align-items:center;min-width:0}
+select{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:8px 12px;cursor:pointer;font-weight:500;color:var(--muted);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.lbl-sm{font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{display:flex;flex-direction:column;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:0;cursor:pointer;overflow:hidden;transition:transform .12s,border-color .12s}
+.card:hover{border-color:var(--muted)}
+.card:active{transform:translateY(1px)}
+.card.on{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.card-sw{background:var(--c);color:var(--tx);height:58px;display:flex;justify-content:space-between;align-items:flex-start;padding:7px 10px;box-shadow:inset 0 -1px 0 rgba(0,0,0,.08)}
+.card-code{font-family:var(--f-display);font-size:28px;line-height:1;font-weight:500}
+.card-st{font-family:var(--f-mono);font-size:11px;opacity:.85}
+.card-name{font-weight:600;padding:8px 10px 0}
+.card-ref{font-size:12.5px;color:var(--muted);padding:2px 10px 6px;line-height:1.35}
+.card-fam{margin-top:auto;padding:0 10px 10px;font-family:var(--f-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.fams{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:860px){.fams{grid-template-columns:1fr}}
+.fam{padding-top:0;overflow:hidden}
+.fam-bar{display:flex;height:10px;margin:0 -16px 4px}
+.fam-bar span{flex:1;background:var(--c);box-shadow:inset 0 0 0 .5px rgba(0,0,0,.12)}
+.fam .fchips{display:flex;flex-wrap:wrap;gap:6px}
+.fchip{border:1px solid rgba(0,0,0,.12);border-radius:7px;background:var(--c);color:var(--tx);padding:5px 9px;cursor:pointer;display:inline-flex;gap:6px;align-items:baseline;font-size:13px;font-weight:500}
+.fchip b{font-family:var(--f-display);font-size:18px;font-weight:500;line-height:1}
+.fchip:hover{transform:translateY(-1px)}
+.fam .fn{font-size:12.5px}
+.fam .fam-act{margin-top:auto;padding-top:2px}
+
+.two{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+@media (max-width:760px){.two{grid-template-columns:1fr}}
+.block{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.block h3{margin:0;font-family:var(--f-display);font-weight:500;font-size:20px}
+.block p{margin:0;color:var(--muted);font-size:14px;max-width:62ch}
+.pairs{display:flex;flex-wrap:wrap;gap:8px}
+.pair{display:inline-flex;align-items:stretch;border:1px solid var(--line);border-radius:8px;overflow:hidden;cursor:pointer;padding:0;background:var(--surface)}
+.pair span{padding:7px 10px;font-weight:600;font-size:13.5px}
+.pair:hover{border-color:var(--muted)}
+.note{border-left:3px solid var(--line);padding:2px 0 2px 14px;color:var(--muted);font-size:14px;max-width:72ch;margin:0}
+.note b{color:var(--ink);font-weight:600}
+
+/* Esercizio */
+.settings{display:grid;grid-template-columns:1fr;gap:14px}
+.set-row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.set-row > *{min-width:0}
+.set-row > .lbl-sm{min-width:90px}
+.toggles{display:flex;flex-wrap:wrap;gap:6px}
+.tg{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px 4px 5px;cursor:pointer;display:inline-flex;gap:6px;align-items:center;font-size:13px;font-weight:500;color:var(--muted)}
+.tg i{width:14px;height:14px;border-radius:50%;background:var(--c);opacity:.3;border:1px solid rgba(0,0,0,.12)}
+.tg[aria-pressed="true"]{color:var(--ink);border-color:var(--ink)}
+.tg[aria-pressed="true"] i{opacity:1}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.linkbtn{background:none;border:0;padding:2px 4px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:13px}
+.linkbtn:hover{color:var(--ink)}
+.check{display:inline-flex;gap:8px;align-items:center;cursor:pointer;font-size:14px}
+.check input{width:16px;height:16px;accent-color:var(--ink)}
+
+.ex-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;align-items:start}
+@media (max-width:820px){.ex-grid{grid-template-columns:1fr}}
+.ex-ctrl{display:flex;flex-wrap:wrap;gap:8px}
+.status{font-size:16px;min-height:1.5em;margin:0}
+.status.ok{color:var(--ok)} .status.bad{color:var(--bad)}
+.answers{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.ans{border:1px solid rgba(0,0,0,.1);border-radius:8px;background:var(--c);color:var(--tx);padding:10px 10px 9px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;transition:transform .1s,opacity .2s}
+.ans:hover{transform:translateY(-1px)}
+.ans b{font-family:var(--f-display);font-size:24px;line-height:1;font-weight:500}
+.ans small{font-size:12.5px;font-weight:500}
+.answers.done .ans{opacity:.35}
+.answers.done .ans.right{opacity:1;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ok)}
+.answers.done .ans.chosen{opacity:1;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--bad)}
+.hint{font-size:13px;color:var(--muted);margin:0}
+
+.score{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.score div{display:flex;flex-direction:column}
+.score b{font-family:var(--f-display);font-size:30px;font-weight:500;line-height:1.1;font-variant-numeric:tabular-nums lining-nums}
+.stats{display:flex;flex-direction:column;gap:6px}
+.srow{display:grid;grid-template-columns:62px 1fr 44px;gap:8px;align-items:center;font-size:13px;font-variant-numeric:tabular-nums}
+.srow .nm{display:inline-flex;gap:6px;align-items:center;font-weight:600}
+.srow .nm i{width:12px;height:12px;border-radius:3px;background:var(--c);border:1px solid rgba(0,0,0,.12)}
+.bar{height:8px;background:var(--soft);border-radius:4px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--c);border-radius:4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.srow .pc{text-align:right;color:var(--muted);font-family:var(--f-mono);font-size:12px}
+.confusion{font-size:13.5px;color:var(--muted);margin:0}
+.confusion b{color:var(--ink)}
+
+footer{font-size:12.5px;color:var(--muted)}
+
+/* Distanza fra le note sulla tastiera */
+.key.span .fill{opacity:.28}
+.key.b.span .fill{opacity:.4}
+
+/* Routine */
+.rt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:920px){.rt-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:600px){.rt-grid{grid-template-columns:1fr}}
+.rt-card{padding-top:0;overflow:hidden}
+.rt-meta{margin-top:auto;padding-top:4px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.rt-player{gap:14px}
+.rt-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px 12px;flex-wrap:wrap}
+.rt-head h3{margin:2px 0 0}
+.rt-count{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rt-prog{height:4px;background:var(--soft);border-radius:2px;overflow:hidden}
+.rt-prog span{display:block;height:100%;width:0;background:var(--ink);transition:width .4s}
+.rt-now{display:grid;grid-template-columns:1fr auto;gap:4px 16px;align-items:center;min-height:100px}
+.rt-text{font-family:var(--f-display);font-size:clamp(24px,3.6vw,34px);line-height:1.15;grid-column:1;min-width:0}
+.rt-sub{color:var(--muted);grid-column:1;max-width:62ch;min-width:0}
+.rt-cd{grid-column:2;grid-row:1 / span 2;font-family:var(--f-display);font-size:clamp(48px,8vw,72px);line-height:1;font-variant-numeric:tabular-nums lining-nums;text-align:right}
+
+/* Onda di colore */
+.flood{position:fixed;inset:0;z-index:50;pointer-events:none;background:var(--fc,#777);color:var(--ft,#fff);
+  display:grid;place-items:center;text-align:center;
+  padding:max(24px,env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(24px,env(safe-area-inset-left,0px));
+  visibility:hidden;opacity:0;clip-path:circle(0px at var(--fx,50%) var(--fy,50%))}
+.flood.on{visibility:visible;opacity:1;clip-path:circle(160vmax at var(--fx,50%) var(--fy,50%));transition:clip-path .65s cubic-bezier(.2,.7,.2,1)}
+.flood.on.off{opacity:0;transition:opacity 1s ease}
+.fl-in{display:flex;flex-direction:column;align-items:center;gap:6px}
+.flood.on .fl-in{animation:fl-rise .8s cubic-bezier(.2,.7,.2,1) both}
+.fl-code{font-family:var(--f-display);font-weight:500;font-size:clamp(110px,26vw,300px);line-height:.9;letter-spacing:-.02em}
+.fl-name{font-family:var(--f-display);font-style:italic;font-size:clamp(30px,6vw,68px);line-height:1.1}
+.fl-meta{font-family:var(--f-mono);font-size:clamp(12px,1.6vw,15px);letter-spacing:.08em;text-transform:uppercase;opacity:.8;margin-top:8px}
+.fl-pulse{position:absolute;inset:0;background:radial-gradient(circle at var(--fx,50%) var(--fy,50%),rgba(255,255,255,.22),transparent 60%);opacity:0}
+.flood.on .fl-pulse{animation:fl-pulse 1.6s ease-out both}
+@keyframes fl-rise{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes fl-pulse{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
+
+@media (max-width:520px){
+  .readout{grid-template-columns:40px 1fr;gap:10px}
+  .ro-sw{width:40px;height:40px;font-size:18px}
+  .ro-act{grid-column:1 / -1;justify-content:flex-start}
+  .ro-act .btn{padding:5px 9px;font-size:13px}
+  .score b{font-size:24px}
+}
+@media (max-height:680px){ .kbd{height:96px} .key .lbl{bottom:16px} .key .mark{bottom:14px} .key.root .lbl{bottom:30px} }
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important;animation:none!important}
+  .flood,.flood.on{clip-path:none}
+  .flood.on{transition:opacity .3s!important}
+}
+</style>
+</head>
+<body>
+<div class="flood" id="flood" aria-hidden="true">
+  <div class="fl-pulse"></div>
+  <div class="fl-in"><span class="fl-code" id="flCode"></span><span class="fl-name" id="flName"></span><span class="fl-meta" id="flMeta"></span></div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="spectrum" id="spectrum" aria-hidden="true"></div>
+    <h1>Cromie <em>degli intervalli</em></h1>
+    <p class="sub">Ogni intervallo ha un colore fisso. Ascolta e confronta, segui una routine guidata, poi mettiti alla prova. Ogni intervallo si può sentire di seguito (melodico), insieme (armonico) o in entrambi i modi.</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" id="t-ascolto" aria-selected="true" data-view="ascolto">Ascolto</button>
+    <button class="tab" role="tab" id="t-routine" aria-selected="false" data-view="routine">Routine</button>
+    <button class="tab" role="tab" id="t-esercizio" aria-selected="false" data-view="esercizio">Esercizio</button>
+  </nav>
+
+  <div class="stage">
+    <div class="kbd-foot">
+      <span>La tastiera resta in fondo allo schermo. Pallino: tonica; barrette colorate: intervallo di ogni tasto rispetto alla tonica.</span>
+      <span class="oct">Tastiera del computer: <kbd>A</kbd>…<kbd>'</kbd> suonano, <kbd>Z</kbd> <kbd>X</kbd> spostano l'ottava</span>
+    </div>
+    <div class="tempo">
+      <label for="tempo" class="lbl-sm">Tempo d'ascolto</label>
+      <span class="t-end">Breve</span>
+      <input type="range" id="tempo" min="0.6" max="4" step="0.1" value="2">
+      <span class="t-end">Lungo</span>
+      <output id="tempoOut" for="tempo">2,0 s per nota</output>
+    </div>
+  </div>
+
+  <!-- ASCOLTO -->
+  <section class="panel" id="v-ascolto" role="tabpanel" aria-labelledby="t-ascolto">
+    <div class="toolbar">
+      <div class="tool-group">
+        <label for="rootSel">Tonica <select id="rootSel"></select></label>
+        <button class="btn" id="pickRoot" aria-pressed="false">Scegli sulla tastiera</button>
+        <button class="btn" id="rndRoot">Tonica a caso</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="tool-group">
+        <span class="lbl-sm">Direzione</span>
+        <div class="seg" id="lDir" role="group" aria-label="Direzione">
+          <button data-v="asc" aria-pressed="true">Ascendente</button>
+          <button data-v="desc" aria-pressed="false">Discendente</button>
+        </div>
+      </div>
+      <div class="tool-group">
+        <span class="lbl-sm">Ascolto</span>
+        <div class="seg" id="lPlay" role="group" aria-label="Modo di ascolto">
+          <button data-v="mel" aria-pressed="true">Di seguito</button>
+          <button data-v="harm" aria-pressed="false">Insieme</button>
+          <button data-v="both" aria-pressed="false">Entrambi</button>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="optFlood" checked> Colore a tutto schermo</label>
+    </div>
+
+    <div class="cards" id="cards"></div>
+
+    <div class="fams" id="fams"></div>
+
+    <div class="two">
+      <div class="block">
+        <h3>Coppie da distinguere</h3>
+        <p>Gli scambi più frequenti. Suonano uno dopo l'altro dalla stessa tonica, nel modo di ascolto scelto: senti cosa cambia fra il primo e il secondo.</p>
+        <div class="pairs" id="pairs"></div>
+      </div>
+      <div class="block">
+        <h3>Tutta la gamma</h3>
+        <p>Dall'unisono all'ottava, in fila, con direzione e modo scelti sopra. Utile per fissare la scala dei colori prima di esercitarti.</p>
+        <div><button class="btn" id="seqBtn">Ascolta in sequenza</button></div>
+      </div>
+    </div>
+
+    <p class="note"><b>Sui colori.</b> Non esiste una corrispondenza standard fra intervalli e colori. Questa mappa parte dalle associazioni più ricorrenti e le ordina con una regola sola: ogni intervallo minore è scuro e profondo, il suo maggiore è chiaro e luminoso (rosso sangue e arancio, indaco e oro, prugna e rosa, rame e vermiglio). Quarta e quinta sono tinte aperte di media intensità, le dissonanze più aspre (2m, tritono, 7M) hanno la saturazione più alta. L'unisono è un bianco neutro, l'ottava un bianco brillante. È un aggancio per la memoria e funziona finché resta sempre la stessa.</p>
+  </section>
+
+  <!-- ROUTINE -->
+  <section class="panel" id="v-routine" role="tabpanel" aria-labelledby="t-routine" hidden>
+    <div id="rtList" class="panel">
+      <div class="rt-grid" id="rtGrid"></div>
+      <p class="note"><b>Come usarle.</b> Le routine scorrono da sole: la tastiera mostra a ogni passo la tonica (pallino), la nota d'arrivo (piena) e i tasti in mezzo (velati), cioè la distanza da coprire. Nelle pause canta a voce: produrre l'intervallo lo fissa più che ascoltarlo soltanto. Il cursore del tempo allunga anche le pause per cantare. Spazio mette in pausa.</p>
+    </div>
+    <div class="block rt-player" id="rtPlayer" hidden>
+      <div class="rt-head">
+        <div><span class="lbl-sm" id="rtMethod"></span><h3 id="rtName"></h3></div>
+        <span class="rt-count" id="rtStep"></span>
+      </div>
+      <div class="rt-prog"><span id="rtBar"></span></div>
+      <div class="rt-now" aria-live="polite">
+        <div class="rt-text" id="rtText"></div>
+        <div class="rt-sub" id="rtSub"></div>
+        <div class="rt-cd" id="rtCd" aria-hidden="true"></div>
+      </div>
+      <div class="ex-ctrl">
+        <button class="btn" id="rtPrev">Indietro</button>
+        <button class="btn primary" id="rtToggle">Pausa</button>
+        <button class="btn" id="rtNext">Avanti</button>
+        <button class="linkbtn" id="rtExit">Torna alle routine</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ESERCIZIO -->
+  <section class="panel" id="v-esercizio" role="tabpanel" aria-labelledby="t-esercizio" hidden>
+    <div class="block settings">
+      <div class="set-row">
+        <span class="lbl-sm">Intervalli</span>
+        <div class="toggles" id="ivToggles"></div>
+      </div>
+      <div class="set-row">
+        <span class="lbl-sm">Gruppi</span>
+        <div class="presets">
+          <button class="linkbtn" data-preset="base">Base</button>
+          <button class="linkbtn" data-preset="terze">Terze e seste</button>
+          <button class="linkbtn" data-preset="diss">Dissonanze</button>
+          <button class="linkbtn" data-preset="tutti">Tutti</button>
+        </div>
+      </div>
+      <div class="set-row">
+        <span class="lbl-sm">Direzione</span>
+        <div class="seg" id="eDir" role="group" aria-label="Direzione">
+          <button data-v="asc" aria-pressed="true">Ascendente</button>
+          <button data-v="desc" aria-pressed="false">Discendente</button>
+          <button data-v="mix" aria-pressed="false">Misto</button>
+        </div>
+      </div>
+      <div class="set-row">
+        <span class="lbl-sm">Ascolto</span>
+        <div class="seg" id="ePlay" role="group" aria-label="Modo di ascolto">
+          <button data-v="mel" aria-pressed="true">Di seguito</button>
+          <button data-v="harm" aria-pressed="false">Insieme</button>
+          <button data-v="both" aria-pressed="false">Entrambi</button>
+          <button data-v="mix" aria-pressed="false">Misto</button>
+        </div>
+      </div>
+      <div class="set-row">
+        <span class="lbl-sm">Opzioni</span>
+        <label class="check"><input type="checkbox" id="optAid"> Aiuto colore (mostra il colore mentre ascolti)</label>
+        <label class="check"><input type="checkbox" id="optAuto" checked> Avanza da solo dopo una risposta giusta</label>
+      </div>
+    </div>
+
+    <div class="ex-grid">
+      <div class="block">
+        <div class="ex-ctrl">
+          <button class="btn primary" id="nextBtn">Nuovo intervallo</button>
+          <button class="btn" id="replayBtn" disabled>Riascolta</button>
+          <button class="btn" id="exMel" disabled><span class="ico">♪ ♪</span>Di seguito</button>
+          <button class="btn" id="exHarm" disabled><span class="ico">♫</span>Insieme</button>
+          <button class="btn" id="cmpBtn" hidden>Confronta con la tua risposta</button>
+        </div>
+        <p class="status" id="exStatus">Premi «Nuovo intervallo» per iniziare.</p>
+        <div class="answers" id="answers"></div>
+        <p class="hint">Rispondi toccando un colore, oppure suona la nota d'arrivo sulla tastiera partendo dalla tonica segnata. Toccare la tonica la fa risuonare. «Di seguito» e «Insieme» ripetono la domanda nell'altro modo, anche prima di rispondere. Spazio riascolta, Invio passa al prossimo.</p>
+      </div>
+      <aside class="block">
+        <div class="score">
+          <div><span class="lbl-sm">Corrette</span><b id="scOk">0/0</b></div>
+          <div><span class="lbl-sm">Precisione</span><b id="scPc">–</b></div>
+          <div><span class="lbl-sm">Serie</span><b id="scSt">0</b></div>
+        </div>
+        <div class="stats" id="stats"></div>
+        <p class="confusion" id="confusion"></p>
+        <div><button class="linkbtn" id="resetStats">Azzera statistiche</button></div>
+      </aside>
+    </div>
+  </section>
+
+  <footer>Ottave in notazione italiana: Do3 è il Do centrale. Le statistiche restano salvate su questo dispositivo.</footer>
+</div>
+
+<div class="dock" id="dock"><div class="dock-in">
+    <div class="readout" id="ro" aria-live="polite">
+      <div class="ro-sw" id="roSw"></div>
+      <div class="ro-body">
+        <div class="ro-eye" id="roEye">Pronto</div>
+        <div class="ro-name" id="roName">Tocca un intervallo o un tasto</div>
+        <div class="ro-meta" id="roMeta">Il primo suono attiva l'audio del browser</div>
+      </div>
+      <div class="ro-act" id="roAct">
+        <button class="btn" id="roMel" disabled><span class="ico">♪ ♪</span>Di seguito</button>
+        <button class="btn" id="roHarm" disabled><span class="ico">♫</span>Insieme</button>
+        <button class="btn" id="roReplay" disabled>Riascolta</button>
+      </div>
+    </div>
+    <div class="kbd-scroll" id="kbdScroll"><div class="kbd tints hk-on" id="kbd" aria-label="Tastiera da Do2 a Do5"></div></div>
+</div></div>
+
+<script>
+(() => {
+  "use strict";
+  const LO = 48, HI = 84; // Do2 … Do5 (notazione italiana)
+  const NAMES = ['Do','Do♯','Re','Mi♭','Mi','Fa','Fa♯','Sol','La♭','La','Si♭','Si'];
+  const noteName = m => NAMES[m % 12] + (Math.floor(m / 12) - 2);
+
+  const IV = [
+    { s:0,  code:'1',  name:'Unisono',      color:'#ECEBE8', ref:'Stessa nota ripetuta' },
+    { s:1,  code:'2m', name:'2ª minore',    color:'#8A0316', ref:'es. Lo squalo (Jaws)' },
+    { s:2,  code:'2M', name:'2ª maggiore',  color:'#FE7F10', ref:'es. Fra Martino' },
+    { s:3,  code:'3m', name:'3ª minore',    color:'#3F309E', ref:'es. Greensleeves, Ninna nanna di Brahms' },
+    { s:4,  code:'3M', name:'3ª maggiore',  color:'#FFC81A', ref:'es. When the Saints Go Marching In' },
+    { s:5,  code:'4G', name:'4ª giusta',    color:'#029E72', ref:'es. Marcia nuziale (Wagner)' },
+    { s:6,  code:'TT', name:'Tritono',      color:'#DF05C5', ref:'es. I Simpson, Maria (West Side Story)' },
+    { s:7,  code:'5G', name:'5ª giusta',    color:'#6AC7F5', ref:'es. Brilla brilla stellina' },
+    { s:8,  code:'6m', name:'6ª minore',    color:'#6B244A', ref:'es. The Entertainer (Joplin)' },
+    { s:9,  code:'6M', name:'6ª maggiore',  color:'#EF869B', ref:'es. My Bonnie' },
+    { s:10, code:'7m', name:'7ª minore',    color:'#A85A28', ref:'es. Star Trek (serie classica)' },
+    { s:11, code:'7M', name:'7ª maggiore',  color:'#F54123', ref:'es. Take On Me (ritornello)' },
+    { s:12, code:'8',  name:'Ottava',       color:'#FFFFFF', ref:'es. Over the Rainbow' },
+  ];
+  function textOn(hex){
+    const n = parseInt(hex.slice(1),16);
+    const lin = c => (c /= 255) <= .03928 ? c/12.92 : Math.pow((c+.055)/1.055, 2.4);
+    const L = .2126*lin(n>>16&255) + .7152*lin(n>>8&255) + .0722*lin(n&255);
+    return L > .2 ? '#15161A' : '#FFFFFF';
+  }
+  IV.forEach(iv => iv.tx = textOn(iv.color));
+  const FAM = [
+    { id:'perf', name:'Consonanze perfette', short:'Consonanza perfetta', ivs:[0,5,7,12],
+      desc:'Unisono, quarta, quinta e ottava. Suoni stabili e vuoti, che si fondono quasi in uno solo.',
+      fn:'La quarta è perfetta per l\'acustica. Nel contrappunto classico però è trattata come dissonanza quando sta sopra il basso.' },
+    { id:'imp', name:'Consonanze imperfette', short:'Consonanza imperfetta', ivs:[3,4,8,9],
+      desc:'Terze e seste. Stabili ma piene: danno all\'armonia il suo colore maggiore o minore.' },
+    { id:'diss', name:'Dissonanze', short:'Dissonanza', ivs:[1,2,6,10,11],
+      desc:'Seconde, settime e tritono. Creano tensione e chiedono di risolvere su una consonanza.' },
+  ];
+  const famOf = s => FAM.find(f => f.ivs.includes(s));
+  const ivOf = d => IV[d === 0 ? 0 : (d % 12 === 0 ? 12 : d % 12)];
+  const DIR_LABEL = { asc:'Ascendente', desc:'Discendente' };
+  const PLAY_LABEL = { mel:'di seguito', harm:'insieme', both:'di seguito e insieme' };
+  const $ = id => document.getElementById(id);
+  const rand = a => a[Math.floor(Math.random() * a.length)];
+  const semis = s => s + (s === 1 ? ' semitono' : ' semitoni');
+  const pairText = (a, b, play) => play === 'harm' ? noteName(Math.min(a,b)) + ' + ' + noteName(Math.max(a,b)) : noteName(a) + ' → ' + noteName(b);
+
+  /* ---------- Memoria locale ---------- */
+  const store = {
+    get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } },
+    set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+  };
+  const settings = Object.assign({ enabled:[3,4,5,7,12], dir:'asc', play:'mel', aid:false, auto:true, flood:true, tempo:2 }, store.get('cromie-settings', {}));
+  if (settings.dir === 'harm'){ settings.dir = 'asc'; settings.play = 'harm'; }
+  if (!['asc','desc','mix'].includes(settings.dir)) settings.dir = 'asc';
+  if (!['mel','harm','both','mix'].includes(settings.play)) settings.play = 'mel';
+  const emptyStats = () => ({ n:0, ok:0, streak:0, best:0, per:{} });
+  let stats = Object.assign(emptyStats(), store.get('cromie-stats', {}));
+
+  /* ---------- Audio ---------- */
+  let ctx, master, wave;
+  const voices = new Set();
+  let timers = [];
+  function ac(){
+    if (!ctx){
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -16; comp.ratio.value = 4;
+      master = ctx.createGain(); master.gain.value = .75;
+      master.connect(comp); comp.connect(ctx.destination);
+      const amps = [0, 1, .5, .3, .2, .12, .08, .055, .035, .02];
+      wave = ctx.createPeriodicWave(new Float32Array(amps.length), new Float32Array(amps));
+    }
+    iosUnlock();
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  // iPhone: fa suonare l'audio anche con l'interruttore laterale su silenzioso
+  let unlocked = false, silentEl = null;
+  function iosUnlock(){
+    if (unlocked) return; unlocked = true;
+    try { if (navigator.audioSession){ navigator.audioSession.type = 'playback'; return; } } catch(e){}
+    try {
+      silentEl = document.createElement('audio');
+      silentEl.setAttribute('x-webkit-airplay', 'deny');
+      silentEl.setAttribute('playsinline', '');
+      silentEl.loop = true; silentEl.src = 'data:audio/wav;base64,UklGRmQGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YUAGAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA';
+      const p = silentEl.play(); if (p && p.catch) p.catch(() => {});
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) silentEl.pause(); else { const q = silentEl.play(); if (q && q.catch) q.catch(() => {}); }
+      });
+    } catch(e){}
+  }
+  function voice(m, t, dur){
+    const f = 440 * Math.pow(2, (m - 69) / 12);
+    const o1 = ctx.createOscillator(), o2 = ctx.createOscillator();
+    o1.setPeriodicWave(wave); o2.setPeriodicWave(wave);
+    o1.frequency.value = f; o2.frequency.value = f; o2.detune.value = 5;
+    const mix = ctx.createGain(); mix.gain.value = .5;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = .6;
+    lp.frequency.setValueAtTime(Math.min(f * 10, 12000), t);
+    lp.frequency.exponentialRampToValueAtTime(Math.max(f * 2.2, 600), t + .9);
+    const g = ctx.createGain();
+    const peak = .3 * (m < 60 ? 1.12 : 1);
+    g.gain.setValueAtTime(.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + .008);
+    g.gain.setTargetAtTime(peak * .35, t + .02, .25 + dur * .2);
+    g.gain.setTargetAtTime(.0001, t + dur, .14);
+    o1.connect(mix); o2.connect(mix); mix.connect(lp); lp.connect(g); g.connect(master);
+    const end = t + dur + 1;
+    o1.start(t); o2.start(t); o1.stop(end); o2.stop(end);
+    const v = { g }; voices.add(v); o1.onended = () => voices.delete(v);
+  }
+  function at(sec, fn){ timers.push(setTimeout(fn, Math.max(0, sec * 1000))); }
+  function hush(){
+    timers.forEach(clearTimeout); timers = [];
+    document.querySelectorAll('.key.down').forEach(k => k.classList.remove('down'));
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    voices.forEach(v => {
+      const p = v.g.gain;
+      if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(t); else p.cancelScheduledValues(t);
+      p.setTargetAtTime(.0001, t, .03);
+    });
+  }
+  // notes: [{m, dt, dur, vis}]
+  function playNotes(notes){
+    ac();
+    const t0 = ctx.currentTime + .04;
+    notes.forEach(n => {
+      const dur = n.dur || 1.3;
+      voice(n.m, t0 + n.dt, dur);
+      if (n.vis !== false){
+        at(n.dt + .04, () => press(n.m, true));
+        at(n.dt + .04 + dur * .9, () => press(n.m, false));
+      }
+    });
+  }
+  // Tempo d'ascolto: T = durata di ogni nota in secondi (cursore sotto la tastiera)
+  const T = () => settings.tempo;
+  // play: 'mel' di seguito · 'harm' insieme · 'both' di seguito, poi insieme
+  function intervalNotes(a, b, play, visB = true){
+    const t = T();
+    if (play === 'harm') return [{ m:a, dt:0, dur:t * 1.3 }, { m:b, dt:0, dur:t * 1.3, vis:visB }];
+    const mel = [{ m:a, dt:0, dur:t }, { m:b, dt:t, dur: play === 'both' ? t : t * 1.2, vis:visB }];
+    if (play === 'mel') return mel;
+    const h = 2 * t + .4;
+    return mel.concat([{ m:a, dt:h, dur:t * 1.3 }, { m:b, dt:h, dur:t * 1.3, vis:visB }]);
+  }
+  const lengthOf = play => { const t = T(); return ({ mel: 2.2 * t, harm: 1.3 * t, both: 3.3 * t + .4 })[play]; };
+  const holdFor = play => lengthOf(play);
+  const spanFor = play => lengthOf(play) + .7;
+
+  /* ---------- Onda di colore ---------- */
+  const fl = $('flood');
+  let flT1, flT2, origin = { x: innerWidth / 2, y: innerHeight / 2 };
+  function originFrom(el, e){
+    if (e && (e.clientX || e.clientY)) origin = { x: e.clientX, y: e.clientY };
+    else if (el){ const r = el.getBoundingClientRect(); origin = { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+  }
+  function flood(iv, hold, meta){
+    clearTimeout(flT1); clearTimeout(flT2);
+    if (!settings.flood) return;
+    fl.style.setProperty('--fc', iv.color); fl.style.setProperty('--ft', iv.tx);
+    fl.style.setProperty('--fx', origin.x + 'px'); fl.style.setProperty('--fy', origin.y + 'px');
+    $('flCode').textContent = iv.code; $('flName').textContent = iv.name; $('flMeta').textContent = meta || '';
+    fl.className = 'flood'; void fl.offsetWidth; fl.className = 'flood on';
+    flT1 = setTimeout(() => { fl.className = 'flood on off'; }, hold * 1000);
+    flT2 = setTimeout(() => { fl.className = 'flood'; }, hold * 1000 + 1050);
+  }
+  function floodClear(){ clearTimeout(flT1); clearTimeout(flT2); fl.className = 'flood'; }
+
+  /* ---------- Tastiera ---------- */
+  const kbd = $('kbd');
+  const keyEl = {};
+  const isBlack = m => [1,3,6,8,10].includes(m % 12);
+  const HK = ['a','w','s','e','d','f','t','g','y','h','u','j','k','o','l','p',';',"'"];
+  let hkBase = 60;
+  (function buildKeys(){
+    const whites = [];
+    for (let m = LO; m <= HI; m++) if (!isBlack(m)) whites.push(m);
+    const W = 100 / whites.length, BW = W * .62;
+    let wi = -1;
+    for (let m = LO; m <= HI; m++){
+      const b = isBlack(m);
+      if (!b) wi++;
+      const el = document.createElement('button');
+      el.className = 'key ' + (b ? 'b' : 'w');
+      el.dataset.m = m;
+      el.setAttribute('aria-label', noteName(m));
+      el.style.left = (b ? (wi + 1) * W - BW / 2 : wi * W) + '%';
+      el.style.width = (b ? BW : W) + '%';
+      el.innerHTML = '<span class="fill"></span><span class="tint"></span><span class="mark"></span>'
+        + '<span class="lbl">' + (m % 12 === 0 ? noteName(m) : '') + '</span><span class="hk"></span>';
+      el.addEventListener('click', () => { originFrom(el); onKey(m); });
+      kbd.appendChild(el);
+      keyEl[m] = el;
+    }
+  })();
+  function paintHotkeys(){
+    Object.values(keyEl).forEach(k => k.querySelector('.hk').textContent = '');
+    HK.forEach((c, i) => { const k = keyEl[hkBase + i]; if (k) k.querySelector('.hk').textContent = c; });
+  }
+  paintHotkeys();
+  function press(m, on){ const k = keyEl[m]; if (k) k.classList.toggle('down', on); }
+  function clearMarks(){
+    Object.values(keyEl).forEach(k => { k.classList.remove('lit','wrong','root','span'); k.style.removeProperty('--c'); k.style.removeProperty('--tx'); });
+  }
+  function markRoot(m){ keyEl[m] && keyEl[m].classList.add('root'); }
+  function markLit(m, iv, cls = 'lit'){
+    const k = keyEl[m]; if (!k) return;
+    k.classList.add(cls); k.style.setProperty('--c', iv.color); k.style.setProperty('--tx', iv.tx);
+  }
+  function markSpan(a, b, iv){
+    for (let m = Math.min(a, b) + 1; m < Math.max(a, b); m++){
+      const k = keyEl[m]; if (!k) continue;
+      k.classList.add('span'); k.style.setProperty('--c', iv.color);
+    }
+  }
+  function paintTints(root){
+    Object.entries(keyEl).forEach(([m, k]) => {
+      const d = Math.abs(+m - root);
+      if (d === 0){ k.style.setProperty('--tc', 'transparent'); return; }
+      k.style.setProperty('--tc', ivOf(d).color);
+      k.style.setProperty('--to', d > 12 ? .4 : 1);
+    });
+  }
+  function showTints(on){ kbd.classList.toggle('tints', on); }
+  function scrollToKey(m){
+    const sc = $('kbdScroll'), k = keyEl[m];
+    if (!k || sc.scrollWidth <= sc.clientWidth) return;
+    sc.scrollTo({ left: k.offsetLeft - sc.clientWidth / 2, behavior: 'smooth' });
+  }
+
+  /* ---------- Display ---------- */
+  let lastPlay = null, cur = null; // cur: {a, b, iv, dir}
+  function setReplay(fn){ lastPlay = fn; $('roReplay').disabled = !fn; }
+  function setCur(c){ cur = c; $('roMel').disabled = $('roHarm').disabled = !c; }
+  $('roReplay').addEventListener('click', e => { originFrom(e.currentTarget, e); lastPlay && lastPlay(); });
+  $('roMel').addEventListener('click', e => { originFrom(e.currentTarget, e); playCur('mel'); });
+  $('roHarm').addEventListener('click', e => { originFrom(e.currentTarget, e); playCur('harm'); });
+  function ro({ eye, name, meta, iv, iv2, mark }){
+    const sw = $('roSw');
+    sw.classList.toggle('split', !!iv2);
+    if (iv){ sw.style.setProperty('--c', iv.color); sw.style.setProperty('--tx', iv.tx); }
+    else { sw.style.removeProperty('--c'); sw.style.removeProperty('--tx'); }
+    if (iv2) sw.style.setProperty('--c2', iv2.color);
+    sw.textContent = mark != null ? mark : (iv && !iv2 ? iv.code : '');
+    $('roEye').textContent = eye || '';
+    $('roName').textContent = name || '';
+    $('roMeta').textContent = meta || '';
+  }
+  function ivLabel(d){
+    if (d > 12){
+      const base = d % 12 === 0 ? 12 : d % 12;
+      return d % 12 === 0 ? (d / 12) + ' ottave' : IV[base].name + ' + ottava';
+    }
+    return ivOf(d).name;
+  }
+
+  /* ---------- Vista ---------- */
+  let view = 'ascolto';
+  function setView(v, push){
+    if (!['ascolto','routine','esercizio'].includes(v)) v = 'ascolto';
+    if (v !== 'routine') rtPause();
+    view = v; hush(); floodClear();
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === v));
+    $('v-ascolto').hidden = v !== 'ascolto';
+    $('v-esercizio').hidden = v !== 'esercizio';
+    $('v-routine').hidden = v !== 'routine';
+    $('roAct').hidden = v !== 'ascolto';
+    if (push && location.hash !== '#' + v) history.replaceState(null, '', '#' + v);
+    if (v === 'ascolto') enterListen(); else if (v === 'routine') enterRoutine(); else enterExercise();
+  }
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => setView(t.dataset.view, true)));
+  window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
+
+  /* ---------- ASCOLTO ---------- */
+  let root = 60, lDir = 'asc', lPlay = 'mel', pickRoot = false, seqOn = false;
+  const rootSel = $('rootSel');
+  for (let m = 55; m <= 72; m++){ const o = document.createElement('option'); o.value = m; o.textContent = noteName(m); rootSel.appendChild(o); }
+  rootSel.value = root;
+  $('spectrum').innerHTML = IV.map(iv => `<span style="--c:${iv.color}"></span>`).join('');
+
+  $('cards').innerHTML = IV.map(iv =>
+    `<button class="card" data-s="${iv.s}" style="--c:${iv.color};--tx:${iv.tx}">
+      <span class="card-sw"><span class="card-code">${iv.code}</span><span class="card-st">${iv.s} st</span></span>
+      <span class="card-name">${iv.name}</span><span class="card-ref">${iv.ref}</span><span class="card-fam">${famOf(iv.s).short}</span></button>`).join('');
+  $('fams').innerHTML = FAM.map(f =>
+    `<div class="block fam">
+      <div class="fam-bar">${f.ivs.map(s => `<span style="--c:${IV[s].color}"></span>`).join('')}</div>
+      <h3>${f.name}</h3><p>${f.desc}</p>
+      <div class="fchips">${f.ivs.map(s => `<button class="fchip" data-s="${s}" style="--c:${IV[s].color};--tx:${IV[s].tx}"><b>${IV[s].code}</b>${IV[s].name}</button>`).join('')}</div>
+      ${f.fn ? `<p class="fn">${f.fn}</p>` : ''}
+      <div class="fam-act"><button class="btn fam-play" data-f="${f.id}">Ascolta il gruppo</button></div>
+    </div>`).join('');
+  const PAIRS = [[3,4],[5,6],[6,7],[8,9],[10,11],[1,2],[7,8]];
+  $('pairs').innerHTML = PAIRS.map(([a,b]) =>
+    `<button class="pair" data-a="${a}" data-b="${b}" aria-label="${IV[a].name} contro ${IV[b].name}">
+      <span style="background:${IV[a].color};color:${IV[a].tx}">${IV[a].code}</span><span style="background:${IV[b].color};color:${IV[b].tx}">${IV[b].code}</span></button>`).join('');
+
+  function listenIdle(){
+    ro({ eye:'Ascolto · tonica ' + noteName(root), name:'Scegli un intervallo', meta:'Oppure tocca un tasto: senti l\'intervallo dalla tonica' });
+  }
+  function enterListen(){
+    showTints(true); clearMarks(); paintTints(root); markRoot(root);
+    listenIdle(); setReplay(null); setCur(null);
+  }
+  function setRoot(m){
+    root = m; if ([...rootSel.options].some(o => +o.value === m)) rootSel.value = m;
+    clearMarks(); paintTints(root); markRoot(root); scrollToKey(root);
+  }
+  function targets(s, r = root, dir = lDir){
+    let a = r, b = dir === 'desc' ? r - s : r + s;
+    if (b > HI){ a -= 12; b -= 12; }
+    if (b < LO){ a += 12; b += 12; }
+    return [a, b];
+  }
+  // Suona un intervallo nella scheda Ascolto, con onda di colore
+  function sound(a, b, iv, dir, play, label){
+    clearMarks(); paintTints(a); markRoot(a); if (a !== b){ markLit(b, iv); markSpan(a, b, iv); }
+    document.querySelectorAll('.card').forEach(c => c.classList.toggle('on', +c.dataset.s === iv.s && label == null));
+    const meta = pairText(a, b, play) + ' · ' + semis(Math.abs(b - a));
+    ro({ eye: DIR_LABEL[dir] + ' · ' + PLAY_LABEL[play], name: label || iv.name, meta, iv });
+    flood(iv, holdFor(play), PLAY_LABEL[play] + ' · ' + pairText(a, b, play));
+    playNotes(intervalNotes(a, b, play));
+  }
+  function showInterval(s, play = lPlay){
+    const [a, b] = targets(s);
+    sound(a, b, IV[s], lDir, play);
+    setCur({ a, b, iv: IV[s], dir: lDir });
+  }
+  function playCur(play){
+    if (!cur) return; stopSeq(); hush();
+    const d = Math.abs(cur.b - cur.a);
+    sound(cur.a, cur.b, cur.iv, cur.dir, play, d > 12 ? ivLabel(d) : null);
+    setReplay(() => playCur(play));
+  }
+  $('cards').addEventListener('click', e => {
+    const c = e.target.closest('.card'); if (!c) return;
+    originFrom(c, e); stopSeq(); hush();
+    const s = +c.dataset.s; showInterval(s);
+    const p = lPlay; setReplay(() => { hush(); showInterval(s, p); });
+  });
+  function playPair(a, b){
+    hush(); setCur(null);
+    const A = IV[a], B = IV[b], span = spanFor(lPlay) + .2;
+    at(0, () => { const [x, y] = targets(a); sound(x, y, A, lDir, lPlay); ro({ eye:'Confronto · prima ' + PLAY_LABEL[lPlay], name: A.name + ' poi ' + B.name, meta: pairText(x, y, lPlay), iv:A, iv2:B, mark:'' }); });
+    at(span, () => { const [x, y] = targets(b); sound(x, y, B, lDir, lPlay); ro({ eye:'Confronto · poi ' + PLAY_LABEL[lPlay], name: A.name + ' poi ' + B.name, meta: pairText(x, y, lPlay), iv:B, iv2:A, mark:'' }); });
+  }
+  $('pairs').addEventListener('click', e => {
+    const p = e.target.closest('.pair'); if (!p) return;
+    originFrom(p, e); stopSeq();
+    const a = +p.dataset.a, b = +p.dataset.b;
+    playPair(a, b); setReplay(() => playPair(a, b));
+  });
+  let seqBtnEl = null, seqLabel = '';
+  function stopSeq(){ if (seqOn){ seqOn = false; if (seqBtnEl) seqBtnEl.textContent = seqLabel; seqBtnEl = null; } }
+  function runSeq(btn, list, e){
+    const same = seqOn && seqBtnEl === btn;
+    hush(); floodClear(); stopSeq();
+    if (same) return;
+    originFrom(btn, e);
+    seqOn = true; seqBtnEl = btn; seqLabel = btn.textContent; btn.textContent = 'Ferma';
+    const step = spanFor(lPlay) - .2;
+    list.forEach((s, i) => at(i * step, () => showInterval(s)));
+    at(list.length * step, () => stopSeq());
+    setCur(null); setReplay(null);
+  }
+  $('seqBtn').addEventListener('click', e => runSeq(e.currentTarget, IV.map(iv => iv.s), e));
+  $('fams').addEventListener('click', e => {
+    const c = e.target.closest('.fchip');
+    if (c){
+      originFrom(c, e); stopSeq(); hush();
+      const s = +c.dataset.s; showInterval(s);
+      const p = lPlay; setReplay(() => { hush(); showInterval(s, p); });
+      return;
+    }
+    const g = e.target.closest('.fam-play');
+    if (g) runSeq(g, FAM.find(f => f.id === g.dataset.f).ivs, e);
+  });
+  rootSel.addEventListener('change', () => { hush(); stopSeq(); setCur(null); setRoot(+rootSel.value); listenIdle(); playNotes([{ m:root, dt:0 }]); });
+  $('rndRoot').addEventListener('click', () => { hush(); stopSeq(); setCur(null); setRoot(55 + Math.floor(Math.random() * 18)); listenIdle(); playNotes([{ m:root, dt:0 }]); });
+  $('pickRoot').addEventListener('click', () => { pickRoot = !pickRoot; $('pickRoot').setAttribute('aria-pressed', pickRoot); });
+  segment($('lDir'), v => { lDir = v; });
+  segment($('lPlay'), v => { lPlay = v; });
+  $('optFlood').checked = settings.flood;
+  $('optFlood').addEventListener('change', e => { settings.flood = e.target.checked; saveSettings(); if (!settings.flood) floodClear(); });
+
+  function listenKey(m){
+    hush(); stopSeq();
+    if (pickRoot){
+      pickRoot = false; $('pickRoot').setAttribute('aria-pressed', 'false');
+      setCur(null); setRoot(m); listenIdle(); playNotes([{ m, dt:0 }]); return;
+    }
+    const d = Math.abs(m - root);
+    if (d === 0){
+      clearMarks(); paintTints(root); markRoot(root); setCur(null);
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('on'));
+      ro({ eye:'Tonica', name: noteName(m), meta:'Tocca un altro tasto per sentire l\'intervallo', iv: IV[0] });
+      playNotes([{ m, dt:0 }]); setReplay(() => playNotes([{ m, dt:0 }])); return;
+    }
+    const iv = ivOf(d), dir = m > root ? 'asc' : 'desc';
+    setCur({ a: root, b: m, iv, dir });
+    playCur(lPlay);
+  }
+
+  /* ---------- ESERCIZIO ---------- */
+  let q = null, autoT = null;
+  const PRESETS = { base:[3,4,5,7,12], terze:[3,4,8,9], diss:[1,2,6,10,11], tutti:[1,2,3,4,5,6,7,8,9,10,11,12] };
+  function saveSettings(){ store.set('cromie-settings', settings); }
+  function renderToggles(){
+    $('ivToggles').innerHTML = IV.slice(1).map(iv =>
+      `<button class="tg" data-s="${iv.s}" style="--c:${iv.color}" aria-pressed="${settings.enabled.includes(iv.s)}"><i></i>${iv.code}</button>`).join('');
+    $('answers').innerHTML = IV.slice(1).filter(iv => settings.enabled.includes(iv.s)).map(iv =>
+      `<button class="ans" data-s="${iv.s}" style="--c:${iv.color};--tx:${iv.tx}"><b>${iv.code}</b><small>${iv.name}</small></button>`).join('');
+    renderStats();
+  }
+  $('ivToggles').addEventListener('click', e => {
+    const t = e.target.closest('.tg'); if (!t) return;
+    const s = +t.dataset.s, set = new Set(settings.enabled);
+    if (set.has(s)){ if (set.size <= 2){ status('Servono almeno due intervalli.', ''); return; } set.delete(s); } else set.add(s);
+    settings.enabled = [...set].sort((a,b) => a - b); saveSettings(); renderToggles(); resetQ();
+  });
+  document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+    settings.enabled = PRESETS[b.dataset.preset].slice(); saveSettings(); renderToggles(); resetQ();
+  }));
+  segment($('eDir'), v => { settings.dir = v; saveSettings(); resetQ(); }, settings.dir);
+  segment($('ePlay'), v => { settings.play = v; saveSettings(); resetQ(); }, settings.play);
+  $('optAid').checked = settings.aid; $('optAuto').checked = settings.auto;
+  $('optAid').addEventListener('change', e => { settings.aid = e.target.checked; saveSettings(); if (view === 'esercizio') paintQ(); });
+  $('optAuto').addEventListener('change', e => { settings.auto = e.target.checked; saveSettings(); });
+
+  function status(t, cls){ const s = $('exStatus'); s.textContent = t; s.className = 'status' + (cls ? ' ' + cls : ''); }
+  function setExButtons(on){ $('replayBtn').disabled = $('exMel').disabled = $('exHarm').disabled = !on; }
+  function resetQ(){
+    clearTimeout(autoT); q = null; hush();
+    setExButtons(false); $('cmpBtn').hidden = true; $('nextBtn').textContent = 'Nuovo intervallo';
+    $('answers').classList.remove('done');
+    if (view === 'esercizio'){ clearMarks(); showTints(false); ro({ eye:'Esercizio', name:'Pronto quando vuoi', meta: settings.enabled.map(s => IV[s].code).join(' · ') }); setReplay(null); }
+    status('Premi «Nuovo intervallo» per iniziare.', '');
+  }
+  function enterExercise(){ q && !q.done ? paintQ() : resetQ(); }
+
+  function newQ(){
+    clearTimeout(autoT); hush();
+    let s = rand(settings.enabled);
+    if (q && s === q.s && settings.enabled.length > 1) s = rand(settings.enabled);
+    const dir = settings.dir === 'mix' ? rand(['asc','desc']) : settings.dir;
+    const play = settings.play === 'mix' ? rand(['mel','harm','both']) : settings.play;
+    const off = dir === 'desc' ? -s : s;
+    const roots = [];
+    for (let r = 53; r <= 79; r++) if (r + off >= LO && r + off <= HI) roots.push(r);
+    const r = rand(roots);
+    q = { s, dir, play, root:r, target:r + off, done:false, guess:null, guessKey:null };
+    $('answers').classList.remove('done');
+    document.querySelectorAll('.ans').forEach(a => a.classList.remove('right','chosen'));
+    setExButtons(true); $('cmpBtn').hidden = true; $('nextBtn').textContent = 'Salta';
+    paintQ(); playQ(); scrollToKey(r);
+  }
+  function paintQ(){
+    if (!q) return;
+    clearMarks(); paintTints(q.root); markRoot(q.root);
+    showTints(settings.aid || q.done);
+    if (q.done){
+      const iv = IV[q.s];
+      markLit(q.target, iv); markSpan(q.root, q.target, iv);
+      if (q.guessKey != null && q.guessKey !== q.target){
+        const gd = Math.abs(q.guessKey - q.root);
+        markLit(q.guessKey, gd ? ivOf(gd) : IV[0], 'wrong');
+      }
+      ro({ eye: DIR_LABEL[q.dir] + ' · ' + PLAY_LABEL[q.play] + (q.ok ? ' · giusto' : ' · sbagliato'), name: iv.name, meta: pairText(q.root, q.target, q.play) + ' · ' + semis(q.s), iv });
+    } else {
+      const iv = settings.aid ? IV[q.s] : null;
+      ro({ eye: DIR_LABEL[q.dir] + ' · ' + PLAY_LABEL[q.play], name: 'Che intervallo è?', meta: 'Tonica ' + noteName(q.root) + (q.dir === 'desc' ? ', si scende' : ', si sale'), iv, mark: settings.aid ? '' : '?' });
+      status('Ascolta e rispondi.', '');
+    }
+  }
+  function playQ(play){
+    if (!q) return; hush();
+    playNotes(intervalNotes(q.root, q.target, play || q.play, q.done));
+  }
+  function answer(g, key){
+    if (!q || q.done) return;
+    const ok = key != null ? key === q.target : g === q.s;
+    q.done = true; q.ok = ok; q.guess = g; q.guessKey = key;
+    stats.n++; const p = stats.per[q.s] || (stats.per[q.s] = { n:0, ok:0, miss:{} }); p.n++;
+    if (ok){ stats.ok++; p.ok++; stats.streak++; stats.best = Math.max(stats.best, stats.streak); }
+    else { stats.streak = 0; if (g) p.miss[g] = (p.miss[g] || 0) + 1; }
+    store.set('cromie-stats', stats);
+    $('answers').classList.add('done');
+    document.querySelectorAll('.ans').forEach(a => {
+      a.classList.toggle('right', +a.dataset.s === q.s);
+      a.classList.toggle('chosen', !ok && +a.dataset.s === g);
+    });
+    $('nextBtn').textContent = 'Prossimo';
+    $('cmpBtn').hidden = ok || !g;
+    if (ok) status('Giusto: ' + IV[q.s].name + '.', 'ok');
+    else status('Era ' + art(IV[q.s]) + '.' + (g ? ' Hai risposto ' + IV[g].name + '.' : key != null ? ' La nota suonata è fuori direzione o oltre l\'ottava.' : ''), 'bad');
+    paintQ(); renderStats();
+    const delay = key != null ? .55 : 0;
+    at(delay, () => playNotes(intervalNotes(q.root, q.target, q.play)));
+    if (ok && settings.auto) autoT = setTimeout(() => { if (view === 'esercizio') newQ(); }, (holdFor(q.play) + 1.5) * 1000);
+  }
+  const art = iv => (iv.s === 6 ? 'un ' : iv.s === 12 ? 'un\'' : 'una ') + iv.name;
+  $('answers').addEventListener('click', e => { const a = e.target.closest('.ans'); if (a) answer(+a.dataset.s, null); });
+  $('nextBtn').addEventListener('click', newQ);
+  $('replayBtn').addEventListener('click', () => playQ());
+  $('exMel').addEventListener('click', () => playQ('mel'));
+  $('exHarm').addEventListener('click', () => playQ('harm'));
+  $('cmpBtn').addEventListener('click', () => {
+    if (!q || !q.guess) return; hush();
+    const g = q.guess, off = q.dir === 'desc' ? -g : g;
+    let a = q.root, b = q.root + off;
+    if (b > HI || b < LO) b = q.root + (off > 0 ? off - 12 : off + 12);
+    ro({ eye:'Confronto · ' + PLAY_LABEL[q.play], name: IV[g].name + ' poi ' + IV[q.s].name, meta:'La tua risposta, poi quella giusta', iv: IV[g], iv2: IV[q.s], mark:'' });
+    playNotes(intervalNotes(a, b, q.play));
+    const span = spanFor(q.play);
+    at(span, () => { playNotes(intervalNotes(q.root, q.target, q.play)); });
+    at(span * 2, () => paintQ());
+  });
+  function exerciseKey(m){
+    if (!q || q.done || m === q.root){ hush(); playNotes([{ m, dt:0 }]); return; }
+    hush(); playNotes([{ m, dt:0, dur:.9 }]);
+    const d = m - q.root;
+    const rightDir = q.dir === 'desc' ? d < 0 : d > 0;
+    const g = rightDir && Math.abs(d) <= 12 ? Math.abs(d) : null;
+    answer(g, m);
+  }
+  function renderStats(){
+    $('scOk').textContent = stats.ok + '/' + stats.n;
+    $('scPc').textContent = stats.n ? Math.round(stats.ok / stats.n * 100) + '%' : '–';
+    $('scSt').textContent = stats.streak + (stats.best > stats.streak ? ' · ' + stats.best : '');
+    const rows = IV.slice(1).filter(iv => settings.enabled.includes(iv.s) || (stats.per[iv.s] && stats.per[iv.s].n));
+    $('stats').innerHTML = rows.map(iv => {
+      const p = stats.per[iv.s]; const pc = p && p.n ? p.ok / p.n : 0;
+      return `<div class="srow" style="--c:${iv.color}"><span class="nm"><i></i>${iv.code}</span>
+        <span class="bar" title="${p ? p.ok + ' su ' + p.n : 'nessun tentativo'}"><span style="width:${(pc * 100).toFixed(0)}%"></span></span>
+        <span class="pc">${p && p.n ? p.ok + '/' + p.n : '–'}</span></div>`;
+    }).join('');
+    let worst = null;
+    Object.entries(stats.per).forEach(([s, p]) => Object.entries(p.miss || {}).forEach(([g, n]) => { if (!worst || n > worst.n) worst = { s:+s, g:+g, n }; }));
+    $('confusion').innerHTML = worst && worst.n > 1
+      ? `Scambio più frequente: senti <b>${IV[worst.s].name}</b> come <b>${IV[worst.g].name}</b> (${worst.n} volte). Ripassalo nella scheda Ascolto.`
+      : 'Qui comparirà l\'intervallo che confondi più spesso.';
+  }
+  let resetArmed = false;
+  $('resetStats').addEventListener('click', () => {
+    if (!resetArmed){ resetArmed = true; $('resetStats').textContent = 'Tocca di nuovo per azzerare'; setTimeout(() => { resetArmed = false; $('resetStats').textContent = 'Azzera statistiche'; }, 3000); return; }
+    resetArmed = false; stats = emptyStats(); store.set('cromie-stats', stats); $('resetStats').textContent = 'Azzera statistiche'; renderStats();
+  });
+
+  /* ---------- Input comuni ---------- */
+  function onKey(m){ if (view === 'ascolto') listenKey(m); else if (view === 'esercizio') exerciseKey(m); else playNotes([{ m, dt:0 }]); }
+  function segment(el, cb, initial){
+    const btns = [...el.querySelectorAll('button')];
+    const set = v => btns.forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v));
+    if (initial) set(initial);
+    btns.forEach(b => b.addEventListener('click', () => { set(b.dataset.v); cb(b.dataset.v); }));
+  }
+  document.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'select' || tag === 'input') return;
+    const k = e.key.toLowerCase();
+    if (view === 'routine' && rt && e.key === ' '){
+      e.preventDefault(); if (tag === 'button') e.target.blur(); rtToggle(); return;
+    }
+    if (view === 'esercizio' && (e.key === ' ' || e.key === 'Enter')){
+      e.preventDefault();
+      if (tag === 'button') e.target.blur();
+      if (e.key === ' ') { q ? playQ() : newQ(); } else newQ();
+      return;
+    }
+    if (k === 'z' || k === 'x'){
+      hkBase = Math.max(LO, Math.min(HI - 17, hkBase + (k === 'z' ? -12 : 12))); paintHotkeys(); scrollToKey(hkBase + 6); return;
+    }
+    const i = HK.indexOf(k);
+    if (i >= 0 && keyEl[hkBase + i]){
+      e.preventDefault();
+      const el = keyEl[hkBase + i]; originFrom(el); onKey(hkBase + i);
+    }
+  });
+
+
+  /* ---------- ROUTINE ---------- */
+  const DO = { 'Do':0, 'Re':2, 'Mi':4, 'Fa':5, 'Sol':7, 'La':9, 'Si':11, "Do'":12, 'La,':-3 };
+  const rr = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+  const keyName = m => NAMES[m % 12];
+  const singSec = () => Math.max(2.5, T() * 1.4);
+  const ROUTINES = [
+    { id:'ancore', method:'Brani di riferimento', name:'Ancore melodiche', ivs:() => [1,2,3,4,5,6,7,8,9,10,11,12],
+      desc:'Il metodo più diffuso nei corsi di teoria: ogni intervallo si lega all\'attacco di un brano noto. Per ognuno senti la forma ascendente, discendente e armonica.',
+      build(){
+        const r = rr(55, 64), st = [{ k:'title', eye:'Ancore melodiche', text:'Un brano per ogni distanza', sub:'Mentre ascolti, richiama mentalmente l\'attacco del brano indicato.' }];
+        IV.slice(1).forEach(iv => {
+          const a = r, b = r + iv.s, ref = iv.ref.replace(/^es\. /, '');
+          st.push({ k:'iv', a, b, play:'mel', eye:'Ascendente', text: iv.name, sub:'Pensa a: ' + ref + '.' });
+          st.push({ k:'iv', a:b, b:a, play:'mel', eye:'Discendente', text: iv.name + ' discendente', sub:'Le stesse due note, in senso opposto.' });
+          st.push({ k:'iv', a, b, play:'harm', eye:'Armonico', text: iv.name + ' armonica', sub:'Le due note insieme: ascolta come si fondono.' });
+        });
+        return st;
+      } },
+    { id:'kodaly', method:'Kodály · Do mobile', name:'Da Sol–Mi alla pentatonica', ivs:() => [3,2,5,4,7,9,12],
+      desc:'Zoltán Kodály: solfeggio relativo con il Do mobile. Si parte dalla terza minore Sol–Mi, la cellula dei canti infantili, e si allarga alla pentatonica. Ogni coppia si ascolta, si canta, si verifica.',
+      build(){
+        const r = rr(55, 60), st = [];
+        st.push({ k:'chords', root:r, chords:[[r, r + 4, r + 7]], eye:'Kodály', text:'Il Do mobile', sub:'Questo accordo fissa il Do su ' + keyName(r) + '. Da qui le sillabe valgono per posizione, non per altezza assoluta.' });
+        [['Sol','Mi'],['Mi','Sol'],['Sol','La'],['La','Sol'],['Mi','La'],['La','Mi'],['Do','Mi'],['Mi','Do'],['Do','Sol'],['Sol','Do'],['La,','Do'],['Do','La'],['Do',"Do'"]].forEach(([x, y]) => {
+          const a = r + DO[x], b = r + DO[y], iv = ivOf(Math.abs(b - a)), lab = x + ' → ' + y;
+          st.push({ k:'iv', a, b, play:'mel', eye:'Kodály · ' + lab, text: lab, sub: iv.name + '. Intona mentalmente le sillabe.' });
+          st.push({ k:'note', a, eye:'Kodály · ' + lab, text:'Parti da ' + x + '…', sub:'Ascolta la prima nota.' });
+          st.push({ k:'silence', sec: singSec(), text:'…e canta ' + y, sub: iv.name + ' ' + (b > a ? 'sopra' : 'sotto') + '. A voce, anche a mezza voce.' });
+          st.push({ k:'reveal', a, b, play:'mel', eye:'Verifica · ' + lab, text:'Verifica', sub: lab + ': ' + iv.name + '.' });
+        });
+        return st;
+      } },
+    { id:'hindemith', method:'Hindemith · Serie II', name:'Dalla fusione alla tensione', ivs:() => [12,7,5,4,8,3,9,2,10,1,11,6],
+      desc:'Paul Hindemith, Unterweisung im Tonsatz (1937): la Serie II ordina gli intervalli dal più consonante al più teso. Ognuno si sente prima insieme, poi di seguito.',
+      build(){
+        const r = rr(55, 62), st = [{ k:'title', eye:'Hindemith · Serie II', text:'Dalla fusione alla tensione', sub:'Dodici intervalli in ordine di consonanza decrescente. Ascolta quanto le due note si fondono, poi quanto si separano.' }];
+        [12,7,5,4,8,3,9,2,10,1,11,6].forEach((s, i) => {
+          const iv = IV[s], eye = 'Serie II · ' + (i + 1) + ' di 12';
+          st.push({ k:'iv', a:r, b:r + s, play:'harm', eye, text:(i + 1) + '. ' + iv.name, sub:'Insieme. ' + famOf(s).short + '.' });
+          st.push({ k:'iv', a:r, b:r + s, play:'mel', eye, text:(i + 1) + '. ' + iv.name, sub:'Di seguito.' });
+        });
+        return st;
+      } },
+    { id:'contrasti', method:'Discriminazione per coppie', name:'Contrasti progressivi', ivs:() => [12,1,7,4,5,3,8,9,10,11,6,2],
+      desc:'Si confrontano due modelli, poi si riconosce quale suona. Le coppie vanno dalla differenza più evidente (ottava e seconda minore) alla più sottile (seconda maggiore e minore).',
+      build(){
+        const st = [{ k:'title', eye:'Contrasti progressivi', text:'Due modelli, poi la prova', sub:'Per ogni coppia: ascolta i due intervalli, poi indovina quale dei due suona. La risposta arriva dopo una pausa.' }];
+        [[12,1],[7,4],[5,7],[3,4],[8,9],[10,11],[5,6],[2,1]].forEach(([x, y]) => {
+          const r = rr(55, 64), A = IV[x], B = IV[y], eye = A.code + ' contro ' + B.code;
+          st.push({ k:'iv', a:r, b:r + x, play:'mel', eye, text:'Primo: ' + A.name, sub:'Fissa colore e suono.' });
+          st.push({ k:'iv', a:r, b:r + y, play:'mel', eye, text:'Secondo: ' + B.name, sub:'Ascolta cosa cambia.' });
+          for (let j = 0; j < 2; j++){
+            const sx = Math.random() < .5 ? x : y;
+            st.push({ k:'hide', a:r, b:r + sx, play:'mel', eye, text: A.code + ' o ' + B.code + '?', sub:'Ascolta.' });
+            st.push({ k:'silence', sec:2.5, text: A.code + ' o ' + B.code + '?', sub:'Decidi prima della risposta.' });
+            st.push({ k:'reveal', a:r, b:r + sx, play:'mel', eye, text:'Era ' + art(IV[sx]), sub:'' });
+          }
+        });
+        return st;
+      } },
+    { id:'canta', method:'Solfeggio cantato', name:'Canta e verifica', ivs:() => settings.enabled,
+      desc:'La prassi del solfeggio cantato: si produce l\'intervallo con la voce prima di sentirlo. Usa gli intervalli scelti nella scheda Esercizio.',
+      build(){
+        const st = [{ k:'title', eye:'Canta e verifica', text:'Prima la voce, poi l\'orecchio', sub:'Senti la tonica, canta l\'intervallo richiesto, poi ascolta la verifica.' }];
+        for (let i = 0; i < 10; i++){
+          const s = rand(settings.enabled), up = Math.random() < .6, off = up ? s : -s, roots = [];
+          for (let r = 53; r <= 76; r++) if (r + off >= LO && r + off <= HI) roots.push(r);
+          const a = rand(roots), b = a + off, iv = IV[s], eye = 'Canta · ' + (i + 1) + ' di 10';
+          st.push({ k:'note', a, eye, text:'Canta ' + art(iv) + ' ' + (up ? 'ascendente' : 'discendente'), sub:'Tonica ' + noteName(a) + '.' });
+          st.push({ k:'silence', sec: singSec() + .5, text:'Canta ' + art(iv) + ' ' + (up ? 'sopra' : 'sotto'), sub:'Tieni la nota finché non arriva la verifica.' });
+          st.push({ k:'reveal', a, b, play:'mel', eye:'Verifica', text:'Verifica', sub: noteName(a) + ' → ' + noteName(b) + '. Eri intonato?' });
+        }
+        return st;
+      } },
+    { id:'tonale', method:'Ascolto funzionale', name:'Contesto tonale', ivs:() => [2,4,5,7,9,11,12],
+      desc:'Una cadenza I–IV–V–I fissa la tonalità; ogni nota si riconosce come grado della scala, non come distanza isolata. È l\'approccio dei metodi funzionali.',
+      build(){
+        const DEG = [[2,'II','Re'],[4,'III','Mi'],[5,'IV','Fa'],[7,'V','Sol'],[9,'VI','La'],[11,'VII','Si'],[12,'VIII','Do']];
+        const st = [{ k:'title', eye:'Contesto tonale', text:'La tonica come centro', sub:'Dopo ogni cadenza senti la tonica e poi un grado della scala maggiore. Prova a cantare la scala fino a quella nota.' }];
+        for (let i = 0; i < 10; i++){
+          const r = rr(60, 64), [d, deg, syl] = rand(DEG), eye = 'Contesto · ' + (i + 1) + ' di 10';
+          st.push({ k:'chords', root:r, chords:[[r - 12, r, r + 4, r + 7], [r - 7, r, r + 5, r + 9], [r - 5, r - 1, r + 2, r + 7], [r - 12, r, r + 4, r + 7]], eye, text:'Cadenza in ' + keyName(r) + ' maggiore', sub:'I – IV – V – I. Lascia che la tonica si fissi.' });
+          st.push({ k:'hide', a:r, b:r + d, play:'mel', eye, text:'Tonica, poi un grado', sub:'Quale grado della scala?' });
+          st.push({ k:'silence', sec:2.5, text:'Quale grado?', sub:'Canta la scala dalla tonica fino alla nota.' });
+          st.push({ k:'reveal', a:r, b:r + d, play:'mel', eye:'Verifica', text: deg + ' grado (' + syl + ')', sub: IV[d].name + ' dalla tonica.' });
+        }
+        return st;
+      } },
+  ];
+  function stepDur(st){
+    const t = T();
+    switch (st.k){
+      case 'title': return 3.2;
+      case 'note': return t + .3;
+      case 'silence': return st.sec;
+      case 'chords': return st.chords.length * Math.max(.8, t * .55) + .6;
+      case 'hide': return lengthOf(st.play) + .3;
+      default: return lengthOf(st.play) + (st.k === 'reveal' ? .9 : .7);
+    }
+  }
+  function renderRoutines(){
+    $('rtGrid').innerHTML = ROUTINES.map(r => {
+      const steps = r.build(), sec = steps.reduce((a, x) => a + stepDur(x), 0);
+      return `<div class="block rt-card">
+        <div class="fam-bar">${r.ivs().map(s => `<span style="--c:${IV[s].color}"></span>`).join('')}</div>
+        <span class="lbl-sm">${r.method}</span><h3>${r.name}</h3><p>${r.desc}</p>
+        <div class="rt-meta"><span>≈ ${Math.max(1, Math.round(sec / 60))} min · ${steps.length} passi</span><button class="btn primary" data-rt="${r.id}">Inizia</button></div>
+      </div>`;
+    }).join('');
+  }
+  $('rtGrid').addEventListener('click', e => { const b = e.target.closest('[data-rt]'); if (b) rtStart(b.dataset.rt); });
+
+  function execStep(st){
+    const t = T();
+    $('rtText').textContent = st.text || ''; $('rtSub').textContent = st.sub || ''; $('rtCd').textContent = '';
+    if (st.k === 'title'){ clearMarks(); ro({ eye: st.eye, name: rt.r.name, meta: rt.r.method }); return stepDur(st); }
+    if (st.k === 'note'){
+      clearMarks(); markRoot(st.a); scrollToKey(st.a);
+      ro({ eye: st.eye, name:'Tonica ' + noteName(st.a), meta:'' });
+      playNotes([{ m:st.a, dt:0, dur:t }]); return stepDur(st);
+    }
+    if (st.k === 'silence'){
+      const n = Math.ceil(st.sec);
+      for (let i = 0; i < n; i++) at(i, () => { $('rtCd').textContent = n - i; });
+      at(st.sec - .05, () => { $('rtCd').textContent = ''; });
+      return stepDur(st);
+    }
+    if (st.k === 'chords'){
+      clearMarks(); markRoot(st.root); scrollToKey(st.root);
+      const cd = Math.max(.8, t * .55), notes = [];
+      st.chords.forEach((c, i) => c.forEach(m => notes.push({ m, dt: i * cd, dur: cd * .95 })));
+      ro({ eye: st.eye, name: st.text, meta:'Tonica ' + noteName(st.root) });
+      playNotes(notes); return stepDur(st);
+    }
+    const s = Math.abs(st.b - st.a), iv = ivOf(s);
+    if (st.k === 'hide'){
+      clearMarks(); markRoot(st.a); scrollToKey(st.a);
+      ro({ eye: st.eye, name:'Che intervallo è?', meta:'Tonica ' + noteName(st.a), mark:'?' });
+      playNotes(intervalNotes(st.a, st.b, st.play, false)); return stepDur(st);
+    }
+    clearMarks(); markRoot(st.a); markLit(st.b, iv); markSpan(st.a, st.b, iv);
+    scrollToKey(Math.round((st.a + st.b) / 2));
+    ro({ eye: st.eye || (st.b > st.a ? 'Ascendente' : 'Discendente'), name: iv.name, meta: pairText(st.a, st.b, st.play) + ' · ' + semis(s), iv });
+    originFrom(keyEl[st.b]);
+    flood(iv, Math.min(.9, lengthOf(st.play) * .35), pairText(st.a, st.b, st.play));
+    playNotes(intervalNotes(st.a, st.b, st.play));
+    return stepDur(st);
+  }
+
+  let rt = null, rtT = null;
+  function rtStart(id){
+    const r = ROUTINES.find(x => x.id === id);
+    rt = { r, steps: r.build(), i: 0, running: true };
+    $('rtList').hidden = true; $('rtPlayer').hidden = false;
+    $('rtMethod').textContent = r.method; $('rtName').textContent = r.name;
+    $('rtPlayer').scrollIntoView({ behavior:'smooth', block:'nearest' });
+    rtGo(0);
+  }
+  function rtGo(i){
+    if (!rt) return;
+    clearTimeout(rtT); hush();
+    rt.i = Math.max(0, i);
+    if (rt.i >= rt.steps.length){ rtEnd(); return; }
+    rtRender();
+    const d = execStep(rt.steps[rt.i]);
+    if (rt.running) rtT = setTimeout(() => rtGo(rt.i + 1), d * 1000);
+  }
+  function rtRender(){
+    const n = rt.steps.length, k = Math.min(rt.i + 1, n);
+    $('rtStep').textContent = 'Passo ' + k + ' di ' + n;
+    $('rtBar').style.width = (k / n * 100) + '%';
+    $('rtToggle').textContent = rt.running ? 'Pausa' : 'Riprendi';
+    $('rtPrev').disabled = rt.i === 0;
+    $('rtNext').disabled = false;
+  }
+  function rtEnd(){
+    rt.running = false; rt.i = rt.steps.length;
+    $('rtStep').textContent = 'Completata'; $('rtBar').style.width = '100%';
+    $('rtText').textContent = 'Routine completata';
+    $('rtSub').textContent = 'Ricomincia con nuove tonalità, oppure passa all\'Esercizio per metterti alla prova.';
+    $('rtCd').textContent = ''; $('rtToggle').textContent = 'Ricomincia'; $('rtNext').disabled = true;
+    clearMarks(); ro({ eye:'Routine', name: rt.r.name, meta:'Completata' });
+  }
+  function rtPause(){ if (!rt || rt.i >= rt.steps.length) return; rt.running = false; clearTimeout(rtT); hush(); $('rtCd').textContent = ''; rtRender(); }
+  function rtToggle(){
+    if (!rt) return;
+    if (rt.i >= rt.steps.length){ rtStart(rt.r.id); return; }
+    if (rt.running) rtPause(); else { rt.running = true; rtGo(rt.i); }
+  }
+  function rtExit(){
+    if (rt){ rt.running = false; clearTimeout(rtT); } rt = null; hush();
+    $('rtPlayer').hidden = true; $('rtList').hidden = false; enterRoutine();
+  }
+  $('rtToggle').addEventListener('click', rtToggle);
+  $('rtPrev').addEventListener('click', () => rt && rtGo(rt.i - 1));
+  $('rtNext').addEventListener('click', () => rt && rtGo(rt.i + 1));
+  $('rtExit').addEventListener('click', rtExit);
+  function enterRoutine(){
+    showTints(false); clearMarks();
+    if (rt){ rtRender(); ro({ eye:'Routine · in pausa', name: rt.r.name, meta:'Premi Riprendi per continuare' }); return; }
+    renderRoutines();
+    ro({ eye:'Routine', name:'Scegli un percorso', meta:'Ogni passo mostra sulla tastiera tonica, nota d\'arrivo e distanza' });
+  }
+
+  /* ---------- Tempo d'ascolto ---------- */
+  const tempoIn = $('tempo'), tempoOut = $('tempoOut');
+  const showTempo = () => { tempoOut.textContent = settings.tempo.toFixed(1).replace('.', ',') + ' s per nota'; };
+  settings.tempo = Math.min(4, Math.max(.6, +settings.tempo || 2));
+  tempoIn.value = settings.tempo; showTempo();
+  tempoIn.addEventListener('input', () => { settings.tempo = +tempoIn.value; showTempo(); saveSettings(); if (view === 'routine' && !rt) renderRoutines(); });
+
+  /* ---------- Tastiera ancorata in basso ---------- */
+  const dockEl = $('dock');
+  const fitDock = () => document.body.style.setProperty('--dock-h', dockEl.offsetHeight + 'px');
+  fitDock();
+  try { new ResizeObserver(fitDock).observe(dockEl); } catch(e){ addEventListener('resize', fitDock); }
+
+  /* ---------- Avvio ---------- */
+  renderToggles();
+  setView(location.hash.slice(1) || 'ascolto');
+  requestAnimationFrame(() => scrollToKey(root + 6));
+})();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+  }
+</script>
+
+</body>
+</html>
