@@ -60,7 +60,13 @@ h1 em{font-style:italic;font-weight:400}
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--bg);border-top:1px solid var(--line);box-shadow:0 -10px 28px rgba(20,22,30,.07);
   padding-top:8px;padding-bottom:max(10px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .dock-in{max-width:1060px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
-.readout{display:grid;grid-template-columns:46px 1fr auto;gap:12px;align-items:center;min-height:46px}
+.readout{display:grid;grid-template-columns:46px auto 1fr auto;gap:12px;align-items:center;min-height:46px}
+.ro-staff{width:144px;height:100px;border-left:1px solid var(--line);border-right:1px solid var(--line);padding:0 6px;box-sizing:content-box}
+.ro-staff svg{display:block;width:144px;height:100px}
+.ro-staff path{fill:var(--ink)}
+.ro-staff .sl{stroke:var(--ink);stroke-opacity:.5;stroke-width:.8}
+.ro-staff .ll{stroke:var(--ink);stroke-width:1}
+.ro-staff .nh{stroke:var(--ink);stroke-width:1}
 .ro-sw{width:46px;height:46px;border-radius:6px;background:var(--c,var(--soft));border:1px solid var(--line);display:grid;place-items:center;font-family:var(--f-display);font-size:20px;color:var(--tx,var(--muted));transition:background .25s}
 .ro-sw.split{background:linear-gradient(135deg,var(--c) 0 50%,var(--c2) 50% 100%)}
 .ro-body{min-width:0}
@@ -80,7 +86,7 @@ h1 em{font-style:italic;font-weight:400}
 /* Tastiera */
 .stage{display:flex;flex-direction:column;gap:10px}
 .kbd-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;padding-bottom:4px}
-.kbd{position:relative;min-width:620px;height:clamp(110px,15vw,170px);user-select:none;-webkit-user-select:none;touch-action:manipulation;background:var(--key-b);border-radius:8px;padding:0;border-top:6px solid var(--key-b)}
+.kbd{position:relative;min-width:620px;height:clamp(100px,13vw,150px);user-select:none;-webkit-user-select:none;touch-action:manipulation;background:var(--key-b);border-radius:8px;padding:0;border-top:6px solid var(--key-b)}
 .key{position:absolute;top:0;border:0;padding:0;margin:0;cursor:pointer;display:block;-webkit-tap-highlight-color:transparent}
 .key.w{height:100%;background:var(--key-w);border-right:1px solid var(--key-w-edge);border-radius:0 0 5px 5px;z-index:1}
 .key.b{height:61%;background:linear-gradient(var(--key-b-top),var(--key-b) 30%);border-radius:0 0 4px 4px;z-index:2;box-shadow:0 2px 0 rgba(0,0,0,.35)}
@@ -244,7 +250,9 @@ footer{font-size:12.5px;color:var(--muted)}
 @keyframes fl-pulse{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
 
 @media (max-width:520px){
-  .readout{grid-template-columns:40px 1fr;gap:10px}
+  .readout{grid-template-columns:40px auto 1fr;gap:10px}
+  .ro-staff,.ro-staff svg{width:112px;height:78px}
+  .ro-staff{padding:0 4px}
   .ro-sw{width:40px;height:40px;font-size:18px}
   .ro-act{grid-column:1 / -1;justify-content:flex-start}
   .ro-act .btn{padding:5px 9px;font-size:13px}
@@ -437,6 +445,7 @@ footer{font-size:12.5px;color:var(--muted)}
 <div class="dock" id="dock"><div class="dock-in">
     <div class="readout" id="ro" aria-live="polite">
       <div class="ro-sw" id="roSw"></div>
+      <div class="ro-staff" id="roStaff" aria-hidden="true"></div>
       <div class="ro-body">
         <div class="ro-eye" id="roEye">Pronto</div>
         <div class="ro-name" id="roName">Tocca un intervallo o un tasto</div>
@@ -496,7 +505,71 @@ footer{font-size:12.5px;color:var(--muted)}
   const $ = id => document.getElementById(id);
   const rand = a => a[Math.floor(Math.random() * a.length)];
   const semis = s => s + (s === 1 ? ' semitono' : ' semitoni');
-  const pairText = (a, b, play) => play === 'harm' ? noteName(Math.min(a,b)) + ' + ' + noteName(Math.max(a,b)) : noteName(a) + ' → ' + noteName(b);
+  const pairText = (a, b, play) => {
+    const A = spellDef(a), B = spellRel(A, b);
+    return play === 'harm' ? (a <= b ? spName(A) + ' + ' + spName(B) : spName(B) + ' + ' + spName(A)) : spName(A) + ' → ' + spName(B);
+  };
+
+
+  /* ---------- Grafia e pentagramma ---------- */
+  // Glifi da Noto Music (SIL Open Font License), convertiti in tracciati
+  const GL = { treble:'M314 801Q300 854 291.0 906.0Q282 958 282 1012Q282 1059 288.5 1100.5Q295 1142 307 1177Q320 1217 341.0 1252.5Q362 1288 385.5 1311.0Q409 1334 427 1334Q451 1334 493 1249Q514 1206 524.0 1156.0Q534 1106 534 1049Q534 978 515.0 907.5Q496 837 459.5 775.0Q423 713 372 666L407 498Q422 500 432.0 501.0Q442 502 447 502Q508 502 556.0 467.5Q604 433 632.5 377.0Q661 321 661 254Q661 177 621.5 115.5Q582 54 503 25Q508 8 532 -117Q538 -147 541.0 -164.5Q544 -182 545.0 -195.0Q546 -208 546 -225Q546 -275 521.5 -314.5Q497 -354 455.5 -376.0Q414 -398 363 -398Q311 -398 271.0 -378.5Q231 -359 208.0 -324.5Q185 -290 185 -245Q185 -197 211.5 -165.0Q238 -133 287 -133Q329 -133 355.5 -163.5Q382 -194 382 -236Q382 -272 357.0 -299.0Q332 -326 292 -326H282Q308 -365 364 -365Q433 -365 472.0 -320.0Q511 -275 511 -205Q511 -188 507.0 -159.5Q503 -131 493 -91Q483 -51 477.5 -25.0Q472 1 470 12Q436 2 390 2Q304 2 222 52Q142 102 96.0 184.0Q50 266 50 361Q50 451 91 530Q132 609 192.5 675.0Q253 741 314 801ZM341 826Q364 838 390.0 870.5Q416 903 440.0 945.0Q464 987 479.0 1029.5Q494 1072 494 1106Q494 1142 483.0 1163.0Q472 1184 445 1184Q421 1184 398.5 1162.0Q376 1140 358.5 1103.5Q341 1067 331.0 1022.0Q321 977 321 930Q321 898 327.5 872.0Q334 846 341 826ZM398 379Q371 373 347.0 353.5Q323 334 308.5 306.5Q294 279 294 248Q294 223 307.0 196.5Q320 170 339 154Q352 142 365 136Q380 129 380 123Q380 120 370 117Q332 126 301.5 151.0Q271 176 253.5 211.5Q236 247 236 287Q236 330 253.5 370.0Q271 410 302.5 442.0Q334 474 374 490L345 641Q229 547 174.5 456.5Q120 366 120 277Q120 212 154.0 156.0Q188 100 247.0 65.5Q306 31 380 31Q400 31 420.5 35.0Q441 39 464 45ZM495 55Q593 97 593 227Q593 270 571.0 305.5Q549 341 512.0 362.0Q475 383 429 383Z', bass:'M50 123Q216 231 288 301Q336 348 373.0 408.5Q410 469 431.5 536.0Q453 603 453 669Q453 728 435.0 773.5Q417 819 383.0 845.0Q349 871 302 871Q284 871 264.5 867.0Q245 863 224 855Q181 839 158.0 813.5Q135 788 135 765Q135 756 143.0 752.0Q151 748 158 748Q168 748 183 752Q190 754 196.5 755.0Q203 756 210 756Q248 756 272.0 733.5Q296 711 296 674Q296 638 266.0 612.0Q236 586 195 586Q146 586 111.0 617.0Q76 648 76 697Q76 756 109.0 802.0Q142 848 198.5 874.0Q255 900 324 900Q400 900 460.0 867.0Q520 834 555.5 776.5Q591 719 591 646Q591 551 538 464Q511 419 476.5 379.0Q442 339 389.0 297.5Q336 256 256.0 208.0Q176 160 57 101ZM687 809Q710 809 726.0 793.0Q742 777 742 754Q742 731 726.0 715.5Q710 700 687 700Q664 700 648.0 715.5Q632 731 632 754Q632 777 648.0 793.0Q664 809 687 809ZM687 589Q710 589 726.0 573.0Q742 557 742 534Q742 511 726.0 495.5Q710 480 687 480Q664 480 648.0 495.5Q632 511 632 534Q632 557 648.0 573.0Q664 589 687 589Z', sharp:'M97 46V189L50 177V277L97 290V486H128V298L195 314V509H226V322L275 333V234L226 220V77L275 89V-14L226 -26V-214H195V-34L128 -52V-247H97V-59L50 -71V32ZM195 70V214L128 197V54Z', flat:'M50 615H81V225Q118 262 165 262Q197 262 223.0 240.5Q249 219 249 178Q249 146 230.0 119.0Q211 92 179 65L110 6Q91 -10 76.0 -25.5Q61 -41 50 -55ZM81 12Q107 40 125.0 63.5Q143 87 153 105Q164 124 169.5 140.0Q175 156 175 170Q175 198 162.0 210.5Q149 223 134 223Q118 223 102.5 211.5Q87 200 81 180Z', natural:'M226 316V-221H195V-9L50 -46V486H83V279ZM197 84V212L81 183V56Z', dsharp:'M224 0V45Q224 64 211.5 75.0Q199 86 181 86Q162 86 149.0 75.0Q136 64 136 47V0H50V86H105Q119 86 127.5 100.0Q136 114 136 131Q136 147 126.5 161.5Q117 176 111 176H50V262H136V209Q136 195 149.0 185.5Q162 176 181 176Q196 176 210.0 185.0Q224 194 224 207V262H310V176H259Q246 176 235.0 160.5Q224 145 224 131Q224 114 233.5 100.0Q243 86 259 86H310V0Z', dflat:'M218 107Q210 95 192.5 78.0Q175 61 147 39Q92 -4 50 -55V615H79V225Q125 262 163 262Q195 262 218 242V615H249V225Q286 262 333 262Q365 262 391.0 240.5Q417 219 417 178Q417 146 398.0 119.0Q379 92 347 65L278 6Q239 -28 218 -55ZM249 12Q289 54 316.0 95.5Q343 137 343 170Q343 198 330.0 210.5Q317 223 302 223Q286 223 270.5 211.5Q255 200 249 180ZM79 12 120 59Q149 92 161.0 117.0Q173 142 173 170Q173 221 132 221Q116 221 100.5 209.5Q85 198 79 180Z' };
+  const SPELL = [[0,0],[0,1],[1,0],[2,-1],[2,0],[3,0],[3,1],[4,0],[5,-1],[5,0],[6,-1],[6,0]];
+  const PCL = [0,2,4,5,7,9,11];
+  const GSTEP = [0,1,1,2,2,3,3,4,5,5,6,6]; // semitoni → gradi (il tritono si scrive come 4ª aumentata)
+  const LET_IT = ['Do','Re','Mi','Fa','Sol','La','Si'];
+  const ACC_TXT = { '-2':'♭♭', '-1':'♭', '0':'', '1':'♯', '2':'×' };
+  const ACC_G = { '-2':'dflat', '-1':'flat', '1':'sharp', '2':'dsharp' };
+  const ACC_AN = { sharp:131, flat:60, natural:132, dsharp:131, dflat:60 };
+  const ACC_W = { sharp:275, flat:249, natural:226, dsharp:310, dflat:417 };
+  function spellDef(m){ const [l, a] = SPELL[m % 12]; return { m, l, a, dn:(Math.floor(m / 12) - 1) * 7 + l }; }
+  function spellRel(R, m){
+    const d = m - R.m, s = Math.abs(d);
+    const st = GSTEP[s % 12] + 7 * Math.floor(s / 12);
+    const dn = R.dn + (d >= 0 ? st : -st);
+    const l = ((dn % 7) + 7) % 7, oct = Math.floor(dn / 7);
+    const a = m - ((oct + 1) * 12 + PCL[l]);
+    return Math.abs(a) <= 2 ? { m, l, a, dn } : spellDef(m);
+  }
+  const spName = n => LET_IT[n.l] + ACC_TXT[n.a] + (Math.floor(n.dn / 7) - 1);
+  const SP = 8, BOT = 76;
+  const glyph = (name, x, y, k, an) => `<path d="${GL[name]}" transform="translate(${x.toFixed(2)},${(y + an * k).toFixed(2)}) scale(${k.toFixed(5)},${(-k).toFixed(5)})"/>`;
+  function staffSVG(a, b, play, iv){
+    const ms = [a, b].filter(v => v != null);
+    const treble = !ms.length || ms.reduce((x, y) => x + y, 0) / ms.length >= 59;
+    const base = treble ? 30 : 18;
+    const Y = dn => BOT - (dn - base) * SP / 2;
+    let out = '';
+    for (let i = 0; i < 5; i++) out += `<line x1="0" x2="150" y1="${BOT - i * SP}" y2="${BOT - i * SP}" class="sl"/>`;
+    out += treble ? glyph('treble', 3, BOT - SP, SP / 250, 336) : glyph('bass', 3, BOT - 3 * SP, SP / 220, 644);
+    if (a != null){
+      const A = spellDef(a), notes = [{ n:A, fill:'var(--ink)' }];
+      if (b != null) notes.push({ n: spellRel(A, b), fill: iv ? iv.color : 'var(--ink)' });
+      const harm = play === 'harm' && notes.length === 2;
+      if (!harm){ notes[0].x = notes.length === 1 ? 94 : 74; if (notes[1]) notes[1].x = 118; }
+      else {
+        const [lo, hi] = notes[0].n.dn <= notes[1].n.dn ? [notes[0], notes[1]] : [notes[1], notes[0]];
+        lo.x = 96; hi.x = hi.n.dn - lo.n.dn <= 1 ? 106.5 : 96;
+      }
+      notes.forEach(nt => {
+        const dn = nt.n.dn;
+        for (let d = base - 2; d >= dn; d -= 2) out += `<line x1="${nt.x - 9}" x2="${nt.x + 9}" y1="${Y(d)}" y2="${Y(d)}" class="ll"/>`;
+        for (let d = base + 10; d <= dn; d += 2) out += `<line x1="${nt.x - 9}" x2="${nt.x + 9}" y1="${Y(d)}" y2="${Y(d)}" class="ll"/>`;
+      });
+      const ka = SP / 270;
+      let accX = Math.min(...notes.map(n => n.x)) - 8;
+      const ord = harm ? notes.slice().sort((p, q) => q.n.dn - p.n.dn) : notes;
+      ord.forEach(nt => {
+        if (!nt.n.a) return;
+        const gname = ACC_G[nt.n.a], w = ACC_W[gname] * ka, right = harm ? accX : nt.x - 8;
+        out += glyph(gname, right - w, Y(nt.n.dn), ka, ACC_AN[gname]);
+        if (harm) accX = right - w - 2;
+      });
+      notes.forEach(nt => { const y = Y(nt.n.dn); out += `<ellipse cx="${nt.x}" cy="${y}" rx="5.4" ry="4" transform="rotate(-20 ${nt.x} ${y})" fill="${nt.fill}" class="nh"/>`; });
+    }
+    return `<svg viewBox="0 14 150 104" role="img" aria-label="Pentagramma">${out}</svg>`;
+  }
+  function stf(a = null, b = null, play = 'mel', iv = null){ $('roStaff').innerHTML = staffSVG(a, b, play, iv); }
 
   /* ---------- Memoria locale ---------- */
   const store = {
@@ -756,12 +829,12 @@ footer{font-size:12.5px;color:var(--muted)}
     ro({ eye:'Ascolto · tonica ' + noteName(root), name:'Scegli un intervallo', meta:'Oppure tocca un tasto: senti l\'intervallo dalla tonica' });
   }
   function enterListen(){
-    showTints(true); clearMarks(); paintTints(root); markRoot(root);
+    showTints(true); clearMarks(); paintTints(root); markRoot(root); stf(root);
     listenIdle(); setReplay(null); setCur(null);
   }
   function setRoot(m){
     root = m; if ([...rootSel.options].some(o => +o.value === m)) rootSel.value = m;
-    clearMarks(); paintTints(root); markRoot(root); scrollToKey(root);
+    clearMarks(); paintTints(root); markRoot(root); scrollToKey(root); stf(root);
   }
   function targets(s, r = root, dir = lDir){
     let a = r, b = dir === 'desc' ? r - s : r + s;
@@ -772,6 +845,7 @@ footer{font-size:12.5px;color:var(--muted)}
   // Suona un intervallo nella scheda Ascolto, con onda di colore
   function sound(a, b, iv, dir, play, label){
     clearMarks(); paintTints(a); markRoot(a); if (a !== b){ markLit(b, iv); markSpan(a, b, iv); }
+    stf(a, b, play, iv);
     document.querySelectorAll('.card').forEach(c => c.classList.toggle('on', +c.dataset.s === iv.s && label == null));
     const meta = pairText(a, b, play) + ' · ' + semis(Math.abs(b - a));
     ro({ eye: DIR_LABEL[dir] + ' · ' + PLAY_LABEL[play], name: label || iv.name, meta, iv });
@@ -848,7 +922,7 @@ footer{font-size:12.5px;color:var(--muted)}
     }
     const d = Math.abs(m - root);
     if (d === 0){
-      clearMarks(); paintTints(root); markRoot(root); setCur(null);
+      clearMarks(); paintTints(root); markRoot(root); setCur(null); stf(m);
       document.querySelectorAll('.card').forEach(c => c.classList.remove('on'));
       ro({ eye:'Tonica', name: noteName(m), meta:'Tocca un altro tasto per sentire l\'intervallo', iv: IV[0] });
       playNotes([{ m, dt:0 }]); setReplay(() => playNotes([{ m, dt:0 }])); return;
@@ -890,7 +964,7 @@ footer{font-size:12.5px;color:var(--muted)}
     clearTimeout(autoT); q = null; hush();
     setExButtons(false); $('cmpBtn').hidden = true; $('nextBtn').textContent = 'Nuovo intervallo';
     $('answers').classList.remove('done');
-    if (view === 'esercizio'){ clearMarks(); showTints(false); ro({ eye:'Esercizio', name:'Pronto quando vuoi', meta: settings.enabled.map(s => IV[s].code).join(' · ') }); setReplay(null); }
+    if (view === 'esercizio'){ clearMarks(); showTints(false); stf(); ro({ eye:'Esercizio', name:'Pronto quando vuoi', meta: settings.enabled.map(s => IV[s].code).join(' · ') }); setReplay(null); }
     status('Premi «Nuovo intervallo» per iniziare.', '');
   }
   function enterExercise(){ q && !q.done ? paintQ() : resetQ(); }
@@ -914,6 +988,7 @@ footer{font-size:12.5px;color:var(--muted)}
   function paintQ(){
     if (!q) return;
     clearMarks(); paintTints(q.root); markRoot(q.root);
+    stf(q.root, q.done ? q.target : null, q.play, IV[q.s]);
     showTints(settings.aid || q.done);
     if (q.done){
       const iv = IV[q.s];
@@ -1151,9 +1226,9 @@ footer{font-size:12.5px;color:var(--muted)}
   function execStep(st){
     const t = T();
     $('rtText').textContent = st.text || ''; $('rtSub').textContent = st.sub || ''; $('rtCd').textContent = '';
-    if (st.k === 'title'){ clearMarks(); ro({ eye: st.eye, name: rt.r.name, meta: rt.r.method }); return stepDur(st); }
+    if (st.k === 'title'){ clearMarks(); stf(); ro({ eye: st.eye, name: rt.r.name, meta: rt.r.method }); return stepDur(st); }
     if (st.k === 'note'){
-      clearMarks(); markRoot(st.a); scrollToKey(st.a);
+      clearMarks(); markRoot(st.a); scrollToKey(st.a); stf(st.a);
       ro({ eye: st.eye, name:'Tonica ' + noteName(st.a), meta:'' });
       playNotes([{ m:st.a, dt:0, dur:t }]); return stepDur(st);
     }
@@ -1164,7 +1239,7 @@ footer{font-size:12.5px;color:var(--muted)}
       return stepDur(st);
     }
     if (st.k === 'chords'){
-      clearMarks(); markRoot(st.root); scrollToKey(st.root);
+      clearMarks(); markRoot(st.root); scrollToKey(st.root); stf(st.root);
       const cd = Math.max(.8, t * .55), notes = [];
       st.chords.forEach((c, i) => c.forEach(m => notes.push({ m, dt: i * cd, dur: cd * .95 })));
       ro({ eye: st.eye, name: st.text, meta:'Tonica ' + noteName(st.root) });
@@ -1172,11 +1247,11 @@ footer{font-size:12.5px;color:var(--muted)}
     }
     const s = Math.abs(st.b - st.a), iv = ivOf(s);
     if (st.k === 'hide'){
-      clearMarks(); markRoot(st.a); scrollToKey(st.a);
+      clearMarks(); markRoot(st.a); scrollToKey(st.a); stf(st.a);
       ro({ eye: st.eye, name:'Che intervallo è?', meta:'Tonica ' + noteName(st.a), mark:'?' });
       playNotes(intervalNotes(st.a, st.b, st.play, false)); return stepDur(st);
     }
-    clearMarks(); markRoot(st.a); markLit(st.b, iv); markSpan(st.a, st.b, iv);
+    clearMarks(); markRoot(st.a); markLit(st.b, iv); markSpan(st.a, st.b, iv); stf(st.a, st.b, st.play, iv);
     scrollToKey(Math.round((st.a + st.b) / 2));
     ro({ eye: st.eye || (st.b > st.a ? 'Ascendente' : 'Discendente'), name: iv.name, meta: pairText(st.a, st.b, st.play) + ' · ' + semis(s), iv });
     originFrom(keyEl[st.b]);
@@ -1217,7 +1292,7 @@ footer{font-size:12.5px;color:var(--muted)}
     $('rtText').textContent = 'Routine completata';
     $('rtSub').textContent = 'Ricomincia con nuove tonalità, oppure passa all\'Esercizio per metterti alla prova.';
     $('rtCd').textContent = ''; $('rtToggle').textContent = 'Ricomincia'; $('rtNext').disabled = true;
-    clearMarks(); ro({ eye:'Routine', name: rt.r.name, meta:'Completata' });
+    clearMarks(); stf(); ro({ eye:'Routine', name: rt.r.name, meta:'Completata' });
   }
   function rtPause(){ if (!rt || rt.i >= rt.steps.length) return; rt.running = false; clearTimeout(rtT); hush(); $('rtCd').textContent = ''; rtRender(); }
   function rtToggle(){
@@ -1234,7 +1309,7 @@ footer{font-size:12.5px;color:var(--muted)}
   $('rtNext').addEventListener('click', () => rt && rtGo(rt.i + 1));
   $('rtExit').addEventListener('click', rtExit);
   function enterRoutine(){
-    showTints(false); clearMarks();
+    showTints(false); clearMarks(); stf();
     if (rt){ rtRender(); ro({ eye:'Routine · in pausa', name: rt.r.name, meta:'Premi Riprendi per continuare' }); return; }
     renderRoutines();
     ro({ eye:'Routine', name:'Scegli un percorso', meta:'Ogni passo mostra sulla tastiera tonica, nota d\'arrivo e distanza' });
@@ -1265,6 +1340,5 @@ footer{font-size:12.5px;color:var(--muted)}
     addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
   }
 </script>
-
 </body>
 </html>
