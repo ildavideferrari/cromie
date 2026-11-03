@@ -304,7 +304,12 @@ footer{font-size:12.5px;color:var(--muted)}
   display:grid;place-items:center;text-align:center;
   padding:max(24px,env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(24px,env(safe-area-inset-left,0px));
   visibility:hidden;opacity:0;clip-path:circle(0px at var(--fx,50%) var(--fy,50%))}
-.flood.on{visibility:visible;opacity:1;clip-path:circle(160vmax at var(--fx,50%) var(--fy,50%));transition:clip-path .65s cubic-bezier(.2,.7,.2,1)}
+.flood.on{visibility:visible;opacity:1;clip-path:circle(160vmax at var(--fx,50%) var(--fy,50%));transition:clip-path .65s cubic-bezier(.2,.7,.2,1),background-color .5s ease,color .5s ease}
+.fl-dots{display:none;flex-wrap:wrap;justify-content:center;gap:clamp(6px,1.4vw,12px);margin-top:20px;max-width:100%;color:inherit}
+.flood.hold .fl-dots{display:flex}
+.fl-dot{width:clamp(20px,3vw,28px);height:clamp(20px,3vw,28px);border-radius:50%;border:0;padding:0;cursor:pointer;background:var(--c);box-shadow:0 0 0 1px currentColor;transition:transform .15s,box-shadow .2s}
+.fl-dot:hover,.fl-dot:focus-visible{transform:scale(1.18)}
+.fl-dot.on{box-shadow:0 0 0 3px var(--fc),0 0 0 5px currentColor}
 .flood.on.off{opacity:0;transition:opacity 1s ease}
 .fl-in{display:flex;flex-direction:column;align-items:center;gap:6px}
 .flood.on .fl-in{animation:fl-rise .8s cubic-bezier(.2,.7,.2,1) both}
@@ -345,7 +350,7 @@ footer{font-size:12.5px;color:var(--muted)}
 <body>
 <div class="flood" id="flood" aria-hidden="true">
   <div class="fl-pulse"></div>
-  <div class="fl-in"><div class="fl-block"><div class="fl-scope"><canvas id="flScope"></canvas><span class="fl-ratio" id="flRatio"></span></div><div class="fl-staff" id="flStaff"></div><span class="fl-code" id="flCode"></span></div><span class="fl-name" id="flName"></span><span class="fl-meta" id="flMeta"></span><span class="fl-hint">Tocca per fermare</span></div>
+  <div class="fl-in"><div class="fl-block"><div class="fl-scope"><canvas id="flScope"></canvas><span class="fl-ratio" id="flRatio"></span></div><div class="fl-staff" id="flStaff"></div><span class="fl-code" id="flCode"></span></div><span class="fl-name" id="flName"></span><span class="fl-meta" id="flMeta"></span><div class="fl-dots" id="flDots" role="group" aria-label="Altri intervalli"></div><span class="fl-hint">Tocca un pallino per cambiare intervallo, altrove per fermare</span></div>
 </div>
 
 <div class="wrap">
@@ -746,8 +751,8 @@ footer{font-size:12.5px;color:var(--muted)}
     const v = { g, o:[o1, o2] }; voices.add(v); o1.onended = () => voices.delete(v);
   }
   function at(sec, fn){ timers.push(setTimeout(fn, Math.max(0, sec * 1000))); }
-  function hush(){
-    if (holdSrc){ holdSrc = null; scope.until = 0; if (fl.classList.contains('hold')){ fl.className = 'flood on off'; clearTimeout(flT2); flT2 = setTimeout(() => { fl.className = 'flood'; }, 1050); } }
+  function hush(keepFlood){
+    if (holdSrc){ holdSrc = null; scope.until = 0; if (!keepFlood && fl.classList.contains('hold')){ fl.className = 'flood on off'; clearTimeout(flT2); flT2 = setTimeout(() => { fl.className = 'flood'; }, 1050); } }
     timers.forEach(clearTimeout); timers = [];
     document.querySelectorAll('.key.down').forEach(k => k.classList.remove('down'));
     if (!ctx) return;
@@ -799,15 +804,26 @@ footer{font-size:12.5px;color:var(--muted)}
     clearTimeout(flT1); clearTimeout(flT2);
     if (!settings.flood) return;
     fl.style.setProperty('--fc', iv.color); fl.style.setProperty('--ft', iv.tx);
-    fl.style.setProperty('--fx', origin.x + 'px'); fl.style.setProperty('--fy', origin.y + 'px');
+    // a tempo indeterminato, se la schermata è già aperta cambia solo il colore, senza richiudersi
+    const inPlace = !isFinite(hold) && fl.classList.contains('hold') && fl.classList.contains('on') && !fl.classList.contains('off');
+    if (!inPlace){ fl.style.setProperty('--fx', origin.x + 'px'); fl.style.setProperty('--fy', origin.y + 'px'); }
     $('flCode').textContent = iv.code; $('flStaff').innerHTML = $('roStaff').innerHTML; $('flName').textContent = iv.name; $('flMeta').textContent = meta || '';
-    fl.className = 'flood'; void fl.offsetWidth; fl.className = 'flood on';
+    document.querySelectorAll('.fl-dot').forEach(d => { const on = +d.dataset.s === iv.s; d.classList.toggle('on', on); d.setAttribute('aria-pressed', on); });
+    if (!inPlace){ fl.className = 'flood'; void fl.offsetWidth; fl.className = 'flood on'; }
     if (!scope.raf) scope.raf = requestAnimationFrame(scopeFrame);
     if (!isFinite(hold)){ fl.classList.add('hold'); return; }
     flT1 = setTimeout(() => { fl.className = 'flood on off'; }, hold * 1000);
     flT2 = setTimeout(() => { fl.className = 'flood'; }, hold * 1000 + 1050);
   }
   function floodClear(){ clearTimeout(flT1); clearTimeout(flT2); fl.className = 'flood'; }
+  $('flDots').innerHTML = IV.map(iv => `<button class="fl-dot" data-s="${iv.s}" style="--c:${iv.color}" aria-label="${iv.name}" title="${iv.name}"></button>`).join('');
+  $('flDots').addEventListener('click', e => {
+    e.stopPropagation();
+    const d = e.target.closest('.fl-dot'); if (!d) return;
+    const s = +d.dataset.s;
+    if (d.classList.contains('on')) return;
+    stopSeq(); hush(true); playHeld(s);
+  });
 
 
   /* ---------- Oscilloscopio XY ---------- */
