@@ -307,6 +307,19 @@ footer{font-size:12.5px;color:var(--muted)}
 .flood.on{visibility:visible;opacity:1;clip-path:circle(160vmax at var(--fx,50%) var(--fy,50%));transition:clip-path .65s cubic-bezier(.2,.7,.2,1),background-color .5s ease,color .5s ease}
 .fl-dots{display:none;flex-wrap:wrap;justify-content:center;gap:clamp(6px,1.4vw,12px);margin-top:20px;max-width:100%;color:inherit}
 .flood.dots .fl-dots{display:flex}
+.fl-tonic{display:none;margin-top:24px;width:min(460px,86vw);flex-direction:column;align-items:center;gap:8px;--ftl:color-mix(in srgb,currentColor 50%,transparent)}
+.flood.hold .fl-tonic{display:flex}
+.ft-label{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.ft-label b{font-weight:600}
+.ft-keys{position:relative;width:100%;height:46px}
+.ft-key{position:absolute;top:0;padding:0;margin:0;border:0;cursor:pointer;background:transparent;color:inherit;-webkit-tap-highlight-color:transparent}
+.ft-key.w{height:100%;box-shadow:inset 0 0 0 1px var(--ftl);border-radius:0 0 4px 4px}
+.ft-key.b{height:58%;background:var(--ftl);z-index:2;border-radius:0 0 3px 3px}
+.ft-key:hover{background:var(--ftl)}
+.ft-key.b:hover{background:currentColor}
+.ft-key.on{background:currentColor}
+.ft-key.b.on{box-shadow:0 0 0 2px var(--fc)}
+@media (max-height:740px){ .fl-code{font-size:clamp(48px,10vw,110px)} .fl-scope canvas{width:clamp(120px,18vw,190px)} .fl-staff svg{width:clamp(160px,28vw,260px)} .fl-name{font-size:clamp(26px,5vw,52px)} .fl-dots{margin-top:12px} .fl-tonic{margin-top:14px} }
 .flood.dots .fl-dots{animation:fl-rise .6s cubic-bezier(.2,.7,.2,1) both}
 .fl-dot{width:clamp(20px,3vw,28px);height:clamp(20px,3vw,28px);border-radius:50%;border:0;padding:0;cursor:pointer;background:var(--c);box-shadow:0 0 0 1px currentColor;transition:transform .15s,box-shadow .2s}
 .fl-dot:hover,.fl-dot:focus-visible{transform:scale(1.18)}
@@ -351,7 +364,7 @@ footer{font-size:12.5px;color:var(--muted)}
 <body>
 <div class="flood" id="flood" aria-hidden="true">
   <div class="fl-pulse"></div>
-  <div class="fl-in"><div class="fl-block"><div class="fl-scope"><canvas id="flScope"></canvas><span class="fl-ratio" id="flRatio"></span></div><div class="fl-staff" id="flStaff"></div><span class="fl-code" id="flCode"></span></div><span class="fl-name" id="flName"></span><span class="fl-meta" id="flMeta"></span><div class="fl-dots" id="flDots" role="group" aria-label="Altri intervalli"></div><span class="fl-hint">Tocca un pallino per ascoltare un altro intervallo, altrove per chiudere</span></div>
+  <div class="fl-in"><div class="fl-block"><div class="fl-scope"><canvas id="flScope"></canvas><span class="fl-ratio" id="flRatio"></span></div><div class="fl-staff" id="flStaff"></div><span class="fl-code" id="flCode"></span></div><span class="fl-name" id="flName"></span><span class="fl-meta" id="flMeta"></span><div class="fl-dots" id="flDots" role="group" aria-label="Altri intervalli"></div><span class="fl-hint">Tocca un pallino per ascoltare un altro intervallo, altrove per chiudere</span><div class="fl-tonic" id="flTonic"><span class="ft-label">Tonica · <b id="flTonicName"></b></span><div class="ft-keys" id="flTonicKeys" role="group" aria-label="Scegli la tonica"></div></div></div>
 </div>
 
 <div class="wrap">
@@ -1171,13 +1184,40 @@ footer{font-size:12.5px;color:var(--muted)}
     if (settings.flood && lPlay !== 'both'){ lPlay = 'both'; document.querySelectorAll('#lPlay button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === 'both')); }
     return lPlay;
   }
+  let lastHeldS = 0;
   function playHeld(s){
+    lastHeldS = s; paintTonicBar();
     const hold = INF(), p = effPlay();
     if (hold) holdSrc = 'c' + s;
     showInterval(s, p, hold, true);
     setReplay(() => { hush(); if (INF()) holdSrc = 'c' + s; showInterval(s, p, INF(), true); });
   }
   fl.addEventListener('click', () => { if (fl.classList.contains('hold')){ hush(); closeFlood(); } });
+  // Barra della tonica nella schermata colorata: stessa estensione del menu Tonica
+  (function buildTonicBar(){
+    const lo = 55, hi = 72, whites = [];
+    for (let m = lo; m <= hi; m++) if (!isBlack(m)) whites.push(m);
+    const W = 100 / whites.length, BW = W * .6;
+    let wi = -1, html = '';
+    for (let m = lo; m <= hi; m++){
+      const b = isBlack(m); if (!b) wi++;
+      const left = b ? (wi + 1) * W - BW / 2 : wi * W;
+      html += `<button class="ft-key ${b ? 'b' : 'w'}" data-m="${m}" style="left:${left}%;width:${b ? BW : W}%" aria-label="Tonica ${noteName(m)}" title="${noteName(m)}"></button>`;
+    }
+    $('flTonicKeys').innerHTML = html;
+  })();
+  function paintTonicBar(){
+    document.querySelectorAll('.ft-key').forEach(k => { const on = +k.dataset.m === root; k.classList.toggle('on', on); k.setAttribute('aria-pressed', on); });
+    $('flTonicName').textContent = noteName(root);
+  }
+  $('flTonic').addEventListener('click', e => {
+    e.stopPropagation();
+    const k = e.target.closest('.ft-key'); if (!k) return;
+    const m = +k.dataset.m;
+    if (m === root && holdSrc) return;
+    stopSeq(); hush(true); setRoot(m); paintTonicBar();
+    playHeld(lastHeldS);
+  });
   function playPair(a, b){
     hush(); setCur(null); effPlay();
     const A = IV[a], B = IV[b], span = spanFor(lPlay) + .2;
