@@ -68,11 +68,11 @@ h1 em{font-style:italic;font-weight:400}
 .sc-ratio{position:absolute;right:6px;bottom:4px;font-family:var(--f-mono);font-size:10px;color:rgba(107,255,149,.6)}
 .fl-row{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:14px;margin:10px 0 6px}
 .fl-scope{grid-column:1 / -1;justify-self:center;display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:6px}
-.fl-scope canvas{display:block;width:clamp(150px,24vw,240px);aspect-ratio:1 / 1;height:auto}
-.fl-ratio{order:-1;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:inherit;opacity:.75}
-.fl-hint{display:none;margin-top:14px;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7}
+.fl-scope canvas{display:block;width:clamp(140px,14vw,160px);aspect-ratio:1 / 1;height:auto}
+.fl-ratio{order:-1;display:block;min-height:1.4em;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:inherit;opacity:.75}
+.fl-hint{display:block;visibility:hidden;min-height:2.8em;margin-top:14px;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7}
 .flood.hold{pointer-events:auto;cursor:pointer}
-.flood.dots .fl-hint{display:block}
+.flood.dots .fl-hint{visibility:visible}
 .ro-staff{width:144px;height:100px;border-left:1px solid var(--line);border-right:1px solid var(--line);padding:0 6px;box-sizing:content-box}
 .ro-staff svg{display:block;width:144px;height:100px}
 .ro-staff path{fill:var(--ink)}
@@ -301,14 +301,14 @@ footer{font-size:12.5px;color:var(--muted)}
 
 /* Onda di colore */
 .flood{position:fixed;inset:0;z-index:50;pointer-events:none;background:var(--fc,#777);color:var(--ft,#fff);
-  display:grid;place-items:center;text-align:center;
+  display:flex;overflow-y:auto;text-align:center;
   padding:max(24px,env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(24px,env(safe-area-inset-left,0px));
   visibility:hidden;opacity:0;clip-path:circle(0px at var(--fx,50%) var(--fy,50%))}
 .flood.on{visibility:visible;opacity:1;clip-path:circle(160vmax at var(--fx,50%) var(--fy,50%));transition:clip-path .65s cubic-bezier(.2,.7,.2,1),background-color .5s ease,color .5s ease}
-.fl-dots{display:none;flex-wrap:wrap;justify-content:center;gap:clamp(6px,1.4vw,12px);margin-top:20px;max-width:100%;color:inherit}
-.flood.dots .fl-dots{display:flex}
-.fl-tonic{display:none;margin-top:24px;width:min(460px,86vw);flex-direction:column;align-items:center;gap:8px;--ftl:color-mix(in srgb,currentColor 50%,transparent)}
-.flood.hold .fl-tonic{display:flex}
+.fl-dots{display:flex;visibility:hidden;flex-wrap:nowrap;justify-content:center;gap:clamp(6px,1.4vw,12px);margin-top:16px;max-width:100%;color:inherit}
+.flood.dots .fl-dots{visibility:visible}
+.fl-tonic{display:flex;visibility:hidden;margin-top:16px;width:min(460px,86vw);flex-direction:column;align-items:center;gap:8px;--ftl:color-mix(in srgb,currentColor 50%,transparent)}
+.flood.hold .fl-tonic{visibility:visible}
 .ft-label{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
 .ft-label b{font-weight:600}
 .ft-keys{position:relative;width:100%;height:46px}
@@ -319,24 +319,24 @@ footer{font-size:12.5px;color:var(--muted)}
 .ft-key.b:hover{background:currentColor}
 .ft-key.on{background:currentColor}
 .ft-key.b.on{box-shadow:0 0 0 2px var(--fc)}
-@media (max-height:740px){ .fl-code{font-size:clamp(48px,10vw,110px)} .fl-scope canvas{width:clamp(120px,18vw,190px)} .fl-staff svg{width:clamp(160px,28vw,260px)} .fl-name{font-size:clamp(26px,5vw,52px)} .fl-dots{margin-top:12px} .fl-tonic{margin-top:14px} }
 .flood.dots .fl-dots{animation:fl-rise .6s cubic-bezier(.2,.7,.2,1) both}
 .fl-dot{width:clamp(20px,3vw,28px);height:clamp(20px,3vw,28px);border-radius:50%;border:0;padding:0;cursor:pointer;background:var(--c);box-shadow:0 0 0 1px currentColor;transition:transform .15s,box-shadow .2s}
 .fl-dot:hover,.fl-dot:focus-visible{transform:scale(1.18)}
 .fl-dot.on{box-shadow:0 0 0 3px var(--fc),0 0 0 5px currentColor}
 .flood.on.off{opacity:0;transition:opacity 1s ease}
-.fl-in{display:flex;flex-direction:column;align-items:center;gap:6px}
+.fl-in{display:flex;flex-direction:column;align-items:center;gap:6px;margin:auto}
 .flood.on .fl-in{animation:fl-rise .8s cubic-bezier(.2,.7,.2,1) both}
-.fl-code{font-family:var(--f-display);font-weight:500;font-size:clamp(60px,12vw,150px);line-height:.9;letter-spacing:-.02em;text-align:left}
+.fl-code{font-family:var(--f-display);font-weight:500;font-size:clamp(56px,9vw,100px);line-height:.9;letter-spacing:-.02em;text-align:left;width:1.55em;white-space:nowrap}
 .fl-block{display:grid;grid-template-columns:auto auto;align-items:center;column-gap:18px;row-gap:12px;margin-bottom:8px}
 .fl-staff{color:inherit}
-.fl-staff svg{display:block;width:clamp(170px,34vw,310px);height:auto}
+.fl-staff svg{display:block;width:clamp(170px,24vw,240px);height:auto}
+@media (min-width:700px){ .fl-hint{min-height:1.4em} }
 .fl-staff path{fill:currentColor}
 .fl-staff .sl{stroke:currentColor;stroke-opacity:.65;stroke-width:.8}
 .fl-staff .ll{stroke:currentColor;stroke-width:1}
 .fl-staff .nh{fill:currentColor;stroke:currentColor;stroke-width:1}
-.fl-name{font-family:var(--f-display);font-style:italic;font-size:clamp(30px,6vw,68px);line-height:1.1}
-.fl-meta{font-family:var(--f-mono);font-size:clamp(12px,1.6vw,15px);letter-spacing:.08em;text-transform:uppercase;opacity:.8;margin-top:8px}
+.fl-name{font-family:var(--f-display);font-style:italic;font-size:clamp(28px,4.4vw,50px);line-height:1.1;white-space:nowrap}
+.fl-meta{font-family:var(--f-mono);font-size:clamp(12px,1.6vw,15px);letter-spacing:.08em;text-transform:uppercase;opacity:.8;margin-top:8px;min-height:1.4em;white-space:nowrap}
 .fl-pulse{position:absolute;inset:0;background:radial-gradient(circle at var(--fx,50%) var(--fy,50%),rgba(255,255,255,.22),transparent 60%);opacity:0}
 .flood.on .fl-pulse{animation:fl-pulse 1.6s ease-out both}
 @keyframes fl-rise{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
