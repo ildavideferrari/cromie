@@ -72,7 +72,7 @@ h1 em{font-style:italic;font-weight:400}
 .fl-ratio{order:-1;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:inherit;opacity:.75}
 .fl-hint{display:none;margin-top:14px;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7}
 .flood.hold{pointer-events:auto;cursor:pointer}
-.flood.hold .fl-hint{display:block}
+.flood.dots .fl-hint{display:block}
 .ro-staff{width:144px;height:100px;border-left:1px solid var(--line);border-right:1px solid var(--line);padding:0 6px;box-sizing:content-box}
 .ro-staff svg{display:block;width:144px;height:100px}
 .ro-staff path{fill:var(--ink)}
@@ -306,7 +306,8 @@ footer{font-size:12.5px;color:var(--muted)}
   visibility:hidden;opacity:0;clip-path:circle(0px at var(--fx,50%) var(--fy,50%))}
 .flood.on{visibility:visible;opacity:1;clip-path:circle(160vmax at var(--fx,50%) var(--fy,50%));transition:clip-path .65s cubic-bezier(.2,.7,.2,1),background-color .5s ease,color .5s ease}
 .fl-dots{display:none;flex-wrap:wrap;justify-content:center;gap:clamp(6px,1.4vw,12px);margin-top:20px;max-width:100%;color:inherit}
-.flood.hold .fl-dots{display:flex}
+.flood.dots .fl-dots{display:flex}
+.flood.dots .fl-dots{animation:fl-rise .6s cubic-bezier(.2,.7,.2,1) both}
 .fl-dot{width:clamp(20px,3vw,28px);height:clamp(20px,3vw,28px);border-radius:50%;border:0;padding:0;cursor:pointer;background:var(--c);box-shadow:0 0 0 1px currentColor;transition:transform .15s,box-shadow .2s}
 .fl-dot:hover,.fl-dot:focus-visible{transform:scale(1.18)}
 .fl-dot.on{box-shadow:0 0 0 3px var(--fc),0 0 0 5px currentColor}
@@ -350,7 +351,7 @@ footer{font-size:12.5px;color:var(--muted)}
 <body>
 <div class="flood" id="flood" aria-hidden="true">
   <div class="fl-pulse"></div>
-  <div class="fl-in"><div class="fl-block"><div class="fl-scope"><canvas id="flScope"></canvas><span class="fl-ratio" id="flRatio"></span></div><div class="fl-staff" id="flStaff"></div><span class="fl-code" id="flCode"></span></div><span class="fl-name" id="flName"></span><span class="fl-meta" id="flMeta"></span><div class="fl-dots" id="flDots" role="group" aria-label="Altri intervalli"></div><span class="fl-hint">Tocca un pallino per cambiare intervallo, altrove per fermare</span></div>
+  <div class="fl-in"><div class="fl-block"><div class="fl-scope"><canvas id="flScope"></canvas><span class="fl-ratio" id="flRatio"></span></div><div class="fl-staff" id="flStaff"></div><span class="fl-code" id="flCode"></span></div><span class="fl-name" id="flName"></span><span class="fl-meta" id="flMeta"></span><div class="fl-dots" id="flDots" role="group" aria-label="Altri intervalli"></div><span class="fl-hint">Tocca un pallino per ascoltare un altro intervallo, altrove per chiudere</span></div>
 </div>
 
 <div class="wrap">
@@ -852,28 +853,40 @@ footer{font-size:12.5px;color:var(--muted)}
     if (e && (e.clientX || e.clientY)) origin = { x: e.clientX, y: e.clientY };
     else if (el){ const r = el.getBoundingClientRect(); origin = { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
   }
-  function flood(iv, hold, meta){
+  // dotsAt (s): la schermata resta aperta e i pallini compaiono a quel punto
+  function flood(iv, hold, meta, dotsAt = null){
     clearTimeout(flT1); clearTimeout(flT2);
     if (!settings.flood) return;
     fl.style.setProperty('--fc', iv.color); fl.style.setProperty('--ft', iv.tx);
     // a tempo indeterminato, se la schermata è già aperta cambia solo il colore, senza richiudersi
-    const inPlace = !isFinite(hold) && fl.classList.contains('hold') && fl.classList.contains('on') && !fl.classList.contains('off');
+    const stay = dotsAt != null || !isFinite(hold);
+    const inPlace = stay && fl.classList.contains('hold') && fl.classList.contains('on') && !fl.classList.contains('off');
     if (!inPlace){ fl.style.setProperty('--fx', origin.x + 'px'); fl.style.setProperty('--fy', origin.y + 'px'); }
     $('flCode').textContent = iv.code; $('flStaff').innerHTML = $('roStaff').innerHTML; $('flName').textContent = iv.name; $('flMeta').textContent = meta || '';
     document.querySelectorAll('.fl-dot').forEach(d => { const on = +d.dataset.s === iv.s; d.classList.toggle('on', on); d.setAttribute('aria-pressed', on); });
     if (!inPlace){ fl.className = 'flood'; void fl.offsetWidth; fl.className = 'flood on'; }
     if (!scope.raf) scope.raf = requestAnimationFrame(scopeFrame);
-    if (!isFinite(hold)){ fl.classList.add('hold'); return; }
+    fl.classList.remove('dots');
+    if (stay){
+      fl.classList.add('hold');
+      if (dotsAt != null) at(dotsAt, () => { if (fl.classList.contains('hold') && !fl.classList.contains('off')) fl.classList.add('dots'); });
+      return;
+    }
     flT1 = setTimeout(() => { fl.className = 'flood on off'; }, hold * 1000);
     flT2 = setTimeout(() => { fl.className = 'flood'; }, hold * 1000 + 1050);
   }
   function floodClear(){ clearTimeout(flT1); clearTimeout(flT2); fl.className = 'flood'; }
+  function closeFlood(){
+    if (!fl.classList.contains('on')) return;
+    clearTimeout(flT1); clearTimeout(flT2);
+    fl.className = 'flood on off'; flT2 = setTimeout(() => { fl.className = 'flood'; }, 1050);
+  }
   $('flDots').innerHTML = IV.map(iv => `<button class="fl-dot" data-s="${iv.s}" style="--c:${iv.color}" aria-label="${iv.name}" title="${iv.name}"></button>`).join('');
   $('flDots').addEventListener('click', e => {
     e.stopPropagation();
     const d = e.target.closest('.fl-dot'); if (!d) return;
     const s = +d.dataset.s;
-    if (d.classList.contains('on')) return;
+    if (d.classList.contains('on') && holdSrc) return;
     stopSeq(); hush(true); playHeld(s);
   });
 
@@ -1110,7 +1123,7 @@ footer{font-size:12.5px;color:var(--muted)}
     return [a, b];
   }
   // Suona un intervallo nella scheda Ascolto, con onda di colore
-  function sound(a, b, iv, dir, play, label, hold = false, noFlood = false){
+  function sound(a, b, iv, dir, play, label, hold = false, noFlood = false, stay = false){
     clearMarks(); paintTints(a); markRoot(a); if (a !== b){ markLit(b, iv); markSpan(a, b, iv); }
     curHold = hold; stf(a, b, play, iv); curHold = false;
     // le note compaiono sul pentagramma insieme al suono
@@ -1120,14 +1133,22 @@ footer{font-size:12.5px;color:var(--muted)}
     const meta = pairText(a, b, play) + ' · ' + semis(Math.abs(b - a));
     ro({ eye: DIR_LABEL[dir] + ' · ' + PLAY_LABEL[play], name: label || iv.name, meta, iv });
     if (noFlood) floodClear(); // dalla tastiera: niente schermata colorata
-    else flood(iv, hold ? Infinity : holdFor(play), PLAY_LABEL[play] + ' · ' + pairText(a, b, play));
+    else {
+      // schermata che resta aperta: i pallini compaiono a fine bicordo (con ∞, 4 s dopo l'inizio del bicordo)
+      let dotsAt = null;
+      if (stay){
+        const ns = intervalNotes(a, b, play), on = Math.max(...ns.map(n => n.dt));
+        dotsAt = .04 + on + (hold ? 4 : Math.max(...ns.filter(n => n.dt === on).map(n => n.dur)));
+      }
+      flood(iv, hold ? Infinity : holdFor(play), PLAY_LABEL[play] + ' · ' + pairText(a, b, play), dotsAt);
+    }
     const notes = intervalNotes(a, b, play);
     if (hold){ const last = Math.max(...notes.map(n => n.dt)); notes.forEach(n => { if (n.dt === last) n.dur = Infinity; }); }
     playNotes(notes);
   }
-  function showInterval(s, play = lPlay, hold = false){
+  function showInterval(s, play = lPlay, hold = false, stay = false){
     const [a, b] = targets(s);
-    sound(a, b, IV[s], lDir, play, null, hold);
+    sound(a, b, IV[s], lDir, play, null, hold, false, stay);
     setCur({ a, b, iv: IV[s], dir: lDir });
   }
   function playCur(play, src, noFlood){
@@ -1153,10 +1174,10 @@ footer{font-size:12.5px;color:var(--muted)}
   function playHeld(s){
     const hold = INF(), p = effPlay();
     if (hold) holdSrc = 'c' + s;
-    showInterval(s, p, hold);
-    setReplay(() => { hush(); if (INF()) holdSrc = 'c' + s; showInterval(s, p, INF()); });
+    showInterval(s, p, hold, true);
+    setReplay(() => { hush(); if (INF()) holdSrc = 'c' + s; showInterval(s, p, INF(), true); });
   }
-  fl.addEventListener('click', () => { if (fl.classList.contains('hold')) hush(); });
+  fl.addEventListener('click', () => { if (fl.classList.contains('hold')){ hush(); closeFlood(); } });
   function playPair(a, b){
     hush(); setCur(null); effPlay();
     const A = IV[a], B = IV[b], span = spanFor(lPlay) + .2;
@@ -1383,7 +1404,7 @@ footer{font-size:12.5px;color:var(--muted)}
   }
   document.addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
-    if (e.key === 'Escape' && holdSrc){ hush(); return; }
+    if (e.key === 'Escape' && (holdSrc || fl.classList.contains('hold'))){ hush(); closeFlood(); return; }
     const tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'select' || tag === 'input') return;
     const k = e.key.toLowerCase();
